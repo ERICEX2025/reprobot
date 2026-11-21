@@ -92,6 +92,45 @@ def get_eval():
     return json.loads(p.read_text()) if p.exists() else {"n": 0, "rows": []}
 
 
+REPLAYS = ROOT / "data" / "replays"
+REPLAYS.mkdir(parents=True, exist_ok=True)
+
+
+def _public(job):
+    """What the page sees: no screenshots, no long agent logs."""
+    out = {k: v for k, v in job.items() if k not in ("screenshot", "fixed_shot", "timeline")}
+    r = out.get("result")
+    if r:
+        r = dict(r)
+        for key in ("verdict", "fix"):
+            if r.get(key):
+                r[key] = {k: v for k, v in r[key].items() if k not in ("agent_log", "script")}
+        out["result"] = r
+    return out
+
+
+def _record(jid, name):
+    """Snapshot a sample run once a second; save it when the run ends."""
+    job, frames, last = JOBS[jid], [], None
+    while True:
+        snap = json.dumps(_public(job), default=str)
+        if snap != last:
+            frames.append({"t": round(time.time() - job["t0"], 1), "job": json.loads(snap)})
+            last = snap
+        if job["status"] != "running":
+            break
+        time.sleep(1)
+    if job["status"] == "done":
+        (REPLAYS / f"{name}.json").write_text(json.dumps(
+            {"sample": name, "recorded": time.strftime("%b %d, %I:%M %p"), "seconds": frames[-1]["t"], "frames": frames}))
+
+
+@app.get("/api/replay/{name}")
+def replay(name: str):
+    p = REPLAYS / f"{name}.json"
+    return json.loads(p.read_text()) if p.exists() and name in SAMPLES else JSONResponse({"error": "no replay yet"}, status_code=404)
+
+
 DEMO_SITE = {"repo_url": "https://github.com/ERICEX2025/reprobot", "subdir": "docs",
              "site_root": "https://ericko.dev/reprobot"}
 SAMPLES = {  # preset recordings for the side-by-side view
@@ -109,6 +148,7 @@ def run_sample(name: str):
     JOBS[jid] = {"status": "running", "stage": "starting", "partial": {}, "activity": [], "t0": time.time()}
     note = f"Page URL: {smp['url']} . User says: {smp['note']}"
     threading.Thread(target=_work, args=(jid, str(ROOT / smp["file"]), note, DEMO_SITE), daemon=True).start()
+    threading.Thread(target=_record, args=(jid, name), daemon=True).start()
     return {"id": jid, "note": smp["note"]}
 
 

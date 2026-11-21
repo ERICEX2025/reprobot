@@ -56,18 +56,49 @@ input[type=text]{width:100%;font:inherit;padding:7px 9px;border:1px solid var(--
 .feed .thought{color:#9fd8bf}.feed .mark{color:#ffd27a;font-weight:700}
 pre{background:var(--code);color:var(--codeink);padding:10px;border-radius:6px;overflow-x:auto;font:12px/1.5 ui-monospace,Menlo,monospace;margin:6px 0 0;max-height:220px}
 .final{font-size:17px;font-weight:700;margin:0}
+
+/* presentation mode: larger type, less chrome, readable from the back of a room */
+.thesis{font-size:clamp(22px,3vw,34px);font-weight:700;letter-spacing:-.015em;line-height:1.12;margin:0;max-width:26ch}
+.thesis em{font-style:normal;color:var(--verify)}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.badge{font:600 12px ui-monospace,Menlo,monospace;letter-spacing:.06em;text-transform:uppercase;padding:6px 9px;border-radius:6px;background:var(--wait-soft);color:var(--wait)}
+.badge.live{background:var(--bug-soft);color:var(--bug)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;border-radius:0;padding:8px 12px;background:var(--card)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+@media (min-width:1000px){body{font-size:17px}.lane h2{font-size:14px}.body{font-size:15.5px}.feed{font-size:13px}.who{font-size:13px}.note{font-size:16px}}
+.verdictbar{border-radius:10px;padding:14px 16px;font-size:clamp(18px,2.2vw,26px);font-weight:700;line-height:1.15;text-wrap:balance}
+.verdictbar.g{background:var(--verify-soft);color:var(--verify)}.verdictbar.r{background:var(--bug-soft);color:var(--bug)}.verdictbar.w{background:var(--wait-soft);color:var(--wait)}
+.verdictbar small{display:block;font-size:14px;font-weight:500;color:var(--muted);margin-top:4px}
+.proof{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+.proof b{display:block;font-size:32px;line-height:1.05;font-variant-numeric:tabular-nums}
+.proof span{font-size:14px;color:var(--muted)}
+body.present .ctl,body.present .hidepresent{display:none}
+kbd{font:12px ui-monospace,Menlo,monospace;border:1px solid var(--line);border-radius:4px;padding:1px 5px}
 </style>
 </head>
 <body>
 <main>
 <header>
   <div>
-    <h1>ReproBot, live</h1>
-    <p class="sub">Two recordings of the same site go through the same checks. Watch where each one stops. <a href="/">Single run</a></p>
+    <p class="thesis">Two bug reports. Both sound convincing. <em>Only a test can tell which is real.</em></p>
+    <p class="sub hidepresent">ReproBot · <a href="/">single run</a></p>
   </div>
-  <button id="both" class="primary">Run both</button>
+  <div class="bar">
+    <span class="badge" id="badge"></span>
+    <div class="seg" role="group" aria-label="Mode">
+      <button id="m-replay" aria-pressed="true">Replay</button><button id="m-live" aria-pressed="false">Live</button>
+    </div>
+    <button id="both" class="primary">Start</button>
+  </div>
 </header>
 <div class="lanes" id="lanes"></div>
+<section class="proof" aria-label="Measured results">
+  <div><b>13 / 15</b><span>recordings judged correctly. One model call on the same videos: 10 / 15.</span></div>
+  <div><b>10 / 10</b><span>planted bugs fixed from a video and one sentence, each fix checked independently.</span></div>
+  <div><b>0</b><span>fixes accepted on the agent's word. The test must fail first, then pass unchanged.</span></div>
+</section>
+<p class="sub hidepresent"><kbd>Space</kbd> start · <kbd>R</kbd> replay · <kbd>L</kbd> live · <kbd>P</kbd> presentation layout · <kbd>F</kbd> full screen</p>
 </main>
 
 <script>
@@ -81,8 +112,8 @@ const STEPS = [
   ["out", "Result", ""],
 ];
 const LANES = [
-  { id: "a", title: "A recording that says nothing", sample: "vague" },
-  { id: "b", title: "A recording that shows the bug", sample: "clear" },
+  { id: "a", title: "Report A", sample: "vague" },
+  { id: "b", title: "Report B", sample: "clear" },
 ];
 const state = {};
 
@@ -100,6 +131,7 @@ function laneHtml(l) {
         </div>
       </div>
     </div>
+    <div id="big-${l.id}"></div>
     <ol class="tree" id="tree-${l.id}">${STEPS.map(([k, n, w]) => `<li class="step idle" data-k="${k}"><span class="dot"></span>
       <div class="head"><span class="name">${n}</span><span class="who">${w}</span></div><div class="body"></div></li>`).join("")}</ol>
   </section>`;
@@ -113,7 +145,8 @@ function setStep(id, k, cls, html) {
   el.className = "step " + cls;
   if (html !== undefined) el.querySelector(".body").innerHTML = html;
 }
-function reset(id) { STEPS.forEach(([k]) => setStep(id, k, "idle", "")); }
+function reset(id) { STEPS.forEach(([k]) => setStep(id, k, "idle", "")); document.getElementById(`big-${id}`).innerHTML = ""; }
+const fmt = (t) => `${Math.floor(t / 60)}:${String(Math.round(t % 60)).padStart(2, "0")}`;
 const feed = (lines) => lines && lines.length ? `<ul class="feed">${lines.map((x) => `<li class="${x.kind}">${x.kind === "run" ? "$ " : x.kind === "thought" ? "› " : ""}${esc(x.text)}</li>`).join("")}</ul>` : "";
 const pct = (x) => Math.round(x * 100) + "%";
 
@@ -148,6 +181,12 @@ function paint(id, job) {
       f === "not_reproduced" ? ["w", "Stopped: could not make it happen"] : ["w", f];
     const secs = Object.values(r.timings).reduce((a, b) => a + b, 0);
     setStep(id, "out", fixed || f === "not_a_bug" ? "done" : f === "reproduced" ? "fail" : "stop", `<p class="final"><span class="chip ${msg[0]}" style="font-size:15px">${msg[1]}</span></p>${Math.round(secs)} seconds`);
+    const big = fixed ? ["g", "Real bug. Fixed, and the fix is proven.", "The test failed on the live site, then passed on the patched code."] :
+      f === "not_reproduced" ? ["w", "Not real. Claim dropped.", "The test passed on the live site, so there is nothing to fix."] :
+      f === "not_a_bug" ? ["g", "Not a bug. Stopped early.", "No agent time spent."] :
+      f === "needs_info" ? ["w", "Too vague. Sent back with a question.", "No agent time spent."] :
+      f === "reproduced" ? ["r", "Real bug, reproduced.", "The test fails on the live site."] : ["w", f, ""];
+    document.getElementById(`big-${id}`).innerHTML = `<div class="verdictbar ${big[0]}">${big[1]}<small>${big[2]} Real time: ${fmt(secs)}.</small></div>`;
   } else setStep(id, "out", "idle");
   if (job.status === "error") setStep(id, "out", "stop", "Something failed: " + esc(job.error));
 }
@@ -157,7 +196,7 @@ async function poll(id, jid) {
   while (s.jid === jid) {
     const job = await (await fetch(`/api/jobs/${jid}`)).json();
     paint(id, job);
-    document.getElementById(`clock-${id}`).textContent = Math.round((Date.now() - t0) / 1000) + "s";
+    document.getElementById(`clock-${id}`).textContent = fmt((Date.now() - t0) / 1000);
     if (job.status !== "running") break;
     await new Promise((r) => setTimeout(r, 1200));
   }
@@ -201,7 +240,45 @@ document.addEventListener("click", (e) => {
   const l = LANES.find((x) => x.id === b.dataset.l);
   if (b.dataset.act === "run") runLane(l); else record(l, b);
 });
-document.getElementById("both").onclick = () => LANES.forEach(runLane);
+let mode = "replay", SPEED = 8;
+const badge = document.getElementById("badge");
+function setMode(m) {
+  mode = m;
+  document.getElementById("m-replay").setAttribute("aria-pressed", m === "replay");
+  document.getElementById("m-live").setAttribute("aria-pressed", m === "live");
+  badge.className = "badge" + (m === "live" ? " live" : "");
+  badge.textContent = m === "live" ? "Live run" : `Replay of a real run · ${SPEED}x speed`;
+}
+async function replayLane(l) {
+  const s = state[l.id]; const token = (s.jid = "replay-" + Date.now()); reset(l.id);
+  const res = await fetch(`/api/replay/${l.sample}`);
+  if (!res.ok) { setStep(l.id, "watch", "stop", "No saved run yet. Switch to Live and run it once."); return; }
+  const rec = await res.json(); const vid = document.getElementById(`vid-${l.id}`);
+  vid.play().catch(() => {});
+  if (mode === "replay") badge.textContent = `Replay of a real run from ${rec.recorded} · ${SPEED}x speed`;
+  const start = performance.now(); let i = 0;
+  while (s.jid === token) {
+    const t = (performance.now() - start) / 1000 * SPEED;
+    while (i < rec.frames.length && rec.frames[i].t <= t) i++;
+    if (i > 0) paint(l.id, rec.frames[i - 1].job);
+    document.getElementById(`clock-${l.id}`).textContent = fmt(Math.min(t, rec.seconds));
+    if (i >= rec.frames.length) break;
+    await new Promise((r) => setTimeout(r, 120));
+  }
+}
+function start() { LANES.forEach((l) => (mode === "live" ? runLane(l) : replayLane(l))); }
+document.getElementById("both").onclick = start;
+document.getElementById("m-replay").onclick = () => setMode("replay");
+document.getElementById("m-live").onclick = () => setMode("live");
+document.addEventListener("keydown", (e) => {
+  if (e.target.matches("input,textarea")) return;
+  const k = e.key.toLowerCase();
+  if (k === " ") { e.preventDefault(); start(); }
+  else if (k === "r") setMode("replay"); else if (k === "l") setMode("live");
+  else if (k === "p") document.body.classList.toggle("present");
+  else if (k === "f") (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => {});
+});
+setMode("replay");
 </script>
 </body>
 </html>
