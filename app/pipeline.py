@@ -221,7 +221,7 @@ Do this:
 Never submit forms with real personal data, make purchases or change anything outside the sandbox."""
 
 
-def reproduce(report, rid, model=HYDROGEN, on_progress=None):
+def reproduce(report, rid, model=HYDROGEN, on_progress=None, keep_env=False):
     env = _checkout_env()
     try:
         it = beta.interactions.create(
@@ -241,7 +241,8 @@ def reproduce(report, rid, model=HYDROGEN, on_progress=None):
         raw = it.output_text or ""
         repro_id = it.id
     finally:
-        _return_env(env)
+        if not keep_env:  # when a fix step follows, the sandbox stays ours until fix() returns it
+            _return_env(env)
 
     # Step 4: strict verdict extraction with a fast model
     v = beta.interactions.create(
@@ -256,12 +257,29 @@ def reproduce(report, rid, model=HYDROGEN, on_progress=None):
     verdict["interaction_id"] = repro_id
 
     shot = verdict.get("screenshot_path") or f"/workspace/repro_{rid}.png"
-    try:
-        verdict["screenshot_png"] = beta.environments.files.download(path=shot, environment_id=env)
-    except Exception as e:  # screenshot is nice to have, not required
-        verdict["screenshot_png"] = None
-        verdict["screenshot_error"] = str(e)[:200]
+    verdict["screenshot_png"] = _download(shot, env, _is_png)  # nice to have, not required
     return verdict
+
+
+def _download(path, env, ok, tries=3):
+    """Sandbox downloads occasionally return wrong bytes; check the content and retry."""
+    for _ in range(tries):
+        try:
+            data = beta.environments.files.download(path=path, environment_id=env)
+            if ok(data):
+                return data
+        except Exception:
+            pass
+        time.sleep(1)
+    return None
+
+
+def _is_png(b):
+    return bool(b) and b[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def _is_diff(b):
+    return bool(b) and b.lstrip()[:10] == b"diff --git"
 
 
 def prewarm(n=2):
@@ -307,9 +325,9 @@ FIX_PROMPT = """You reproduced this bug on the live site with /workspace/repro_{
 Source: {repo_url} (the site's files are in the subfolder "{subdir}"; that subfolder is what is served at {site_root}).
 
 1. git clone --depth 1 the repo to /workspace/src_{rid}.
-2. Serve the subfolder locally in the background: python3 -m http.server 8765.
+2. Serve the subfolder locally in the background: python3 -m http.server {port}.
 3. Copy your reproduction script to /workspace/repro_local_{rid}.py and change ONLY the origin, so {site_root} becomes
-   http://localhost:8765 . Run it. It must print BUG_PRESENT. If it does not, stop and answer cannot_confirm_locally.
+   http://localhost:{port} . Run it. It must print BUG_PRESENT. If it does not, stop and answer cannot_confirm_locally.
 4. Find the root cause in the source. Make the smallest change that fixes it. Do not touch unrelated code and do not
    weaken or edit the check in the reproduction script.
 5. Run the local reproduction 3 more times. Every run must print BUG_ABSENT. If the bug was intermittent, run it 8 times.
@@ -328,7 +346,8 @@ def fix(report, verdict, repo_url, subdir, site_root, rid, on_progress=None):
             environment=env,
             previous_interaction_id=verdict["interaction_id"],
             agent_config={"type": "antigravity", "model": NEON, "max_total_tokens": 200000},
-            input=FIX_PROMPT.format(rid=rid, repo_url=repo_url, subdir=subdir, site_root=site_root.rstrip("/")),
+            input=FIX_PROMPT.format(rid=rid, repo_url=repo_url, subdir=subdir, site_root=site_root.rstrip("/"),
+                                    port=8700 + sum(map(ord, rid)) % 200),
             background=True,
         )
         t0 = time.time()
@@ -338,8 +357,9 @@ def fix(report, verdict, repo_url, subdir, site_root, rid, on_progress=None):
             if on_progress:
                 on_progress(f"fix agent working ({time.time() - t0:.0f}s)")
         raw = it.output_text or ""
-    finally:
+    except Exception:
         _return_env(env)
+        raise
     x = beta.interactions.create(
         model=HYDROGEN,
         input="Extract the result from this engineer's log. Use only what the log says.\n\n" + raw,
@@ -348,12 +368,14 @@ def fix(report, verdict, repo_url, subdir, site_root, rid, on_progress=None):
     )
     out = json.loads(_wait_interaction(x).output_text)
     out["agent_log"] = raw
-    for key, path in (("diff", f"/workspace/fix_{rid}.diff"), ("fixed_png", f"/workspace/fixed_{rid}.png")):
-        try:
-            data = beta.environments.files.download(path=path, environment_id=env)
-            out[key] = data.decode("utf-8", "replace") if key == "diff" else data
-        except Exception:
-            out[key] = None
+    diff = _download(f"/workspace/fix_{rid}.diff", env, _is_diff)
+    if diff:
+        out["diff"] = diff.decode("utf-8", "replace")
+    else:  # fall back to the diff the agent printed in its log
+        i = raw.find("diff --git")
+        out["diff"] = raw[i:].split("```")[0].strip() if i >= 0 else None
+    out["fixed_png"] = _download(f"/workspace/fixed_{rid}.png", env, _is_png)
+    _return_env(env)
     return out
 
 
@@ -387,8 +409,10 @@ def run(video_path, note="", rid="x", on_progress=lambda s: None, source=None):
 
     t = time.time()
     on_progress("managed agent is reproducing it in a sandbox browser")
-    v = reproduce(report, rid, on_progress=on_progress)
+    v = reproduce(report, rid, on_progress=on_progress, keep_env=bool(source))
     timings["reproduce"] = time.time() - t
+    if source and v["verdict"] != "reproduced":
+        _return_env(v["environment_id"])
     result["verdict"] = v
     result["final"] = v["verdict"]
 

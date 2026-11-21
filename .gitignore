@@ -4,3 +4,11 @@ __pycache__/
 data/uploads/
 data/*.log
 data/t1.png
+eval/diner_cases.py
+eval/verify_diner.py
+data/diner_verify.json
+data/eval_diner.json
+data/diner_runs/
+data/diner/
+data/shots/diner_*
+eval/record_diner.py

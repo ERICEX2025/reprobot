@@ -44,6 +44,28 @@ What the numbers hide:
   since a tab recording has no address bar. Pages behind a login are reported as blocked.
   One run takes one to four minutes, mostly the sandbox step.
 
+### The fix step
+
+A second test, on a small restaurant ordering site with 10 planted bugs (`docs/`, live on GitHub Pages) plus 3
+recordings of correct behavior. Input per case: one screen recording and one vague sentence. The pipeline never
+sees the bug list.
+
+| | Result |
+|---|---|
+| Bug or not a bug | 13 / 13 |
+| Reproduced in the sandbox | 10 / 10 |
+| Fixed, and the fix independently verified | **10 / 10** |
+| Median time per bug | 6 minutes |
+
+"Independently verified" means each diff was applied to a clean copy of the site and tested with a separate,
+stricter script than the agent's own.
+
+What the numbers hide: these are one-line faults in an 800-line site with full source, one run each, and the
+recordings are cleaner than real ones, so treat 10 of 10 as an upper bound. The watcher misread one recording
+and that bug was reproduced partly by luck. The run also exposed two bugs in our own harness (cases sharing a
+sandbox, and file downloads returning corrupt bytes for 3 diffs); both are fixed. The case list and verifier
+are kept out of this repository because the fix agent clones it.
+
 Reproduce the evaluation: `python eval/record.py && python eval/run.py` (results in `data/eval.json`).
 
 ## Run it
