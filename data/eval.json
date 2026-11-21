@@ -1,0 +1,430 @@
+{
+ "n": 15,
+ "system_correct": 13,
+ "baseline_correct": 10,
+ "system_false_alarms": 0,
+ "baseline_false_alarms": 0,
+ "rows": [
+  {
+   "id": "broken_images",
+   "truth": true,
+   "note": "some pictures dont show up",
+   "baseline_is_bug": true,
+   "baseline_title": "First two images fail to load on the Broken Images page",
+   "baseline_s": 17,
+   "final": "reproduced",
+   "title": "First two images fail to load on Broken Images page",
+   "is_bug_claimed": true,
+   "gate": {
+    "reproducible": 0.92,
+    "checkable": 0.95,
+    "severity": "other",
+    "severity_confidence": 0.36,
+    "missing": [],
+    "ready": true
+   },
+   "summary": "On https://the-internet.herokuapp.com/broken_images, the first two images (asdf.jpg and hjkl.jpg) under the Broken Images heading consistently had naturalWidth === 0 and displayed broken image icons across all 3 runs, while the third image (img/avatar-blank.jpg) loaded with naturalWidth=160.",
+   "attempts": 3,
+   "system_s": 137,
+   "timings": {
+    "upload": 3.3464090824127197,
+    "watch": 25.67798686027527,
+    "gate": 0.9623470306396484,
+    "reproduce": 107.25263905525208
+   }
+  },
+  {
+   "id": "add_remove_ok",
+   "truth": false,
+   "note": "delete button removes the thing i added??",
+   "baseline_is_bug": false,
+   "baseline_title": "Delete button removes added element as expected on Add/Remove Elements page",
+   "baseline_s": 12,
+   "final": "not_a_bug",
+   "title": "Expected behavior: Clicking 'Delete' on Add/Remove Elements removes an added element",
+   "is_bug_claimed": false,
+   "gate": {
+    "reproducible": 0.77,
+    "checkable": 0.84,
+    "severity": "other",
+    "severity_confidence": 0.99,
+    "missing": [],
+    "ready": true
+   },
+   "summary": null,
+   "attempts": null,
+   "system_s": 60,
+   "timings": {
+    "upload": 3.1164541244506836,
+    "watch": 55.32541608810425,
+    "gate": 1.4878320693969727
+   }
+  },
+  {
+   "id": "typos",
+   "truth": true,
+   "note": "theres a spelling mistake sometimes",
+   "baseline_is_bug": false,
+   "baseline_title": "Intentional typo ('won,t') displayed on Typos demonstration page",
+   "baseline_s": 22,
+   "final": "reproduced",
+   "title": "Intermittent typo ('won,t' instead of 'won't') in page copy across reloads",
+   "is_bug_claimed": true,
+   "gate": {
+    "reproducible": 0.94,
+    "checkable": 0.95,
+    "severity": "cosmetic",
+    "severity_confidence": 0.88,
+    "missing": [],
+    "ready": true
+   },
+   "summary": "Across 3 runs of 5 page loads each on https://the-internet.herokuapp.com/typos, the typo \"won,t\" instead of \"won't\" appeared intermittently in every run. All 3 runs printed BUG_PRESENT.",
+   "attempts": 3,
+   "system_s": 201,
+   "timings": {
+    "upload": 3.179495096206665,
+    "watch": 65.85766696929932,
+    "gate": 0.2876131534576416,
+    "reproduce": 132.03671789169312
+   }
+  },
+  {
+   "id": "disappearing",
+   "truth": true,
+   "note": "a menu item is missing sometimes when i refresh",
+   "baseline_is_bug": false,
+   "baseline_title": "Gallery menu item disappears on page reload as designed on Disappearing Elements page",
+   "baseline_s": 13,
+   "final": "reproduced",
+   "title": "Gallery navigation menu item disappears on page refresh",
+   "is_bug_claimed": true,
+   "gate": {
+    "reproducible": 0.86,
+    "checkable": 0.88,
+    "severity": "major",
+    "severity_confidence": 0.57,
+    "missing": [],
+    "ready": true
+   },
+   "summary": "Across 3 runs, after waiting 2.5s and reloading the page, only 4 menu items ('Home', 'About', 'Contact Us', 'Portfolio') were rendered with 'Gallery' absent. In Run 2, 'Gallery' was present on initial load before disappearing after reload, while in Runs 1 and 3 it was absent both initially and after reload.",
+   "attempts": 3,
+   "system_s": 190,
+   "timings": {
+    "upload": 3.5905799865722656,
+    "watch": 60.63763785362244,
+    "gate": 0.5178060531616211,
+    "reproduce": 125.45783400535583
+   }
+  },
+  {
+   "id": "shifting_menu",
+   "truth": true,
+   "note": "the menu jumps around when i reload",
+   "baseline_is_bug": false,
+   "baseline_title": "Menu item shifts position on page reload on Shifting Content demo page",
+   "baseline_s": 20,
+   "final": "reproduced",
+   "title": "Gallery menu item randomly shifts left on reload and overlaps Portfolio button",
+   "is_bug_claimed": true,
+   "gate": {
+    "reproducible": 0.95,
+    "checkable": 0.94,
+    "severity": "major",
+    "severity_confidence": 0.51,
+    "missing": [],
+    "ready": true
+   },
+   "summary": "Across 3 runs, the Gallery link intermittently shifted left by 100.0px (from left=572.5 to left=472.5), overlapping the Portfolio link (left=463.4, right=572.5). All 3 runs printed BUG_PRESENT.",
+   "attempts": 3,
+   "system_s": 250,
+   "timings": {
+    "upload": 2.9491372108459473,
+    "watch": 107.86203718185425,
+    "gate": 0.24560189247131348,
+    "reproduce": 139.14984893798828
+   }
+  },
+  {
+   "id": "status_500",
+   "truth": true,
+   "note": "clicking 500 gives an error page",
+   "baseline_is_bug": false,
+   "baseline_title": "Clicking 500 on Status Codes page displays 500 status code page as expected",
+   "baseline_s": 12,
+   "final": "not_reproduced",
+   "title": "HTTP status codes have '0' replaced with '9' (299, 391, 494, 599) on Status Codes page and result page",
+   "is_bug_claimed": true,
+   "gate": {
+    "reproducible": 0.96,
+    "checkable": 0.95,
+    "severity": "major",
+    "severity_confidence": 0.44,
+    "missing": [],
+    "ready": true
+   },
+   "summary": "On https://the-internet.herokuapp.com/status_codes, the four status code links displayed ['200', '301', '404', '500'] instead of ['299', '391', '494', '599'], and clicking the fourth link ('500') navigated to a page displaying 'This page returned a 500 status code.' instead of '599'.",
+   "attempts": 3,
+   "system_s": 175,
+   "timings": {
+    "upload": 3.174269914627075,
+    "watch": 92.21935987472534,
+    "gate": 0.2250988483428955,
+    "reproduce": 79.17257523536682
+   }
+  },
+  {
+   "id": "checkboxes_ok",
+   "truth": false,
+   "note": "checkbox 2 is already checked, is that a bug",
+   "baseline_is_bug": false,
+   "baseline_title": "Checkbox 2 is pre-checked by default on the Checkboxes page",
+   "baseline_s": 18,
+   "final": "not_a_bug",
+   "title": "Checkbox 2 is pre-checked by default on the Checkboxes page (expected behavior, not a bug)",
+   "is_bug_claimed": false,
+   "gate": {
+    "reproducible": 0.6,
+    "checkable": 0.24,
+    "severity": "other",
+    "severity_confidence": 1.0,
+    "missing": [
+     "what exactly goes wrong on screen"
+    ],
+    "ready": false
+   },
+   "summary": null,
+   "attempts": null,
+   "system_s": 42,
+   "timings": {
+    "upload": 2.868778944015503,
+    "watch": 38.40461087226868,
+    "gate": 0.4257967472076416
+   }
+  },
+  {
+   "id": "login_wrong_pw",
+   "truth": false,
+   "note": "cant log in",
+   "baseline_is_bug": false,
+   "baseline_title": "Login fails with 'Your password is invalid!' when password field is left empty",
+   "baseline_s": 12,
+   "final": "not_a_bug",
+   "title": "Not a bug: Login page displays expected 'Your password is invalid!' error after wrong password",
+   "is_bug_claimed": false,
+   "gate": {
+    "reproducible": 0.76,
+    "checkable": 0.64,
+    "severity": "other",
+    "severity_confidence": 0.97,
+    "missing": [],
+    "ready": true
+   },
+   "summary": null,
+   "attempts": null,
+   "system_s": 80,
+   "timings": {
+    "upload": 2.964966058731079,
+    "watch": 76.88666701316833,
+    "gate": 0.30965089797973633
+   }
+  },
+  {
+   "id": "dynamic_controls",
+   "truth": false,
+   "note": "i click enable and the box stays greyed out for ages",
+   "baseline_is_bug": false,
+   "baseline_title": "No bug observed: Dynamic Controls page remains in initial state and asynchronous delay is expected behavior",
+   "baseline_s": 15,
+   "final": "not_reproduced",
+   "title": "Clicking 'Enable' under 'Enable/disable' does not enable the text input field",
+   "is_bug_claimed": true,
+   "gate": {
+    "reproducible": 0.98,
+    "checkable": 0.95,
+    "severity": "major",
+    "severity_confidence": 0.76,
+    "missing": [],
+    "ready": true
+   },
+   "summary": "On every run, after navigating to the dynamic controls page, clicking the Enable button, and waiting 5 seconds, the text input field became enabled, the button text updated from Enable to Disable, and the confirmation message \"It's enabled!\" appeared.",
+   "attempts": 3,
+   "system_s": 264,
+   "timings": {
+    "upload": 2.9550347328186035,
+    "watch": 185.11188125610352,
+    "gate": 0.204146146774292,
+    "reproduce": 75.88045525550842
+   }
+  },
+  {
+   "id": "notification",
+   "truth": true,
+   "note": "says action unsuccessful please try again sometimes",
+   "baseline_is_bug": false,
+   "baseline_title": "Notification message displays 'Action unsuccessful, please try again' as designed",
+   "baseline_s": 12,
+   "final": "not_a_bug",
+   "title": "Displaying 'Action unsuccessful, please try again' on Notification Message page is expected behavior",
+   "is_bug_claimed": false,
+   "gate": {
+    "reproducible": 0.76,
+    "checkable": 0.49,
+    "severity": "other",
+    "severity_confidence": 0.99,
+    "missing": [
+     "what exactly goes wrong on screen"
+    ],
+    "ready": false
+   },
+   "summary": null,
+   "attempts": null,
+   "system_s": 60,
+   "timings": {
+    "upload": 3.019643783569336,
+    "watch": 56.678223848342896,
+    "gate": 0.24266505241394043
+   }
+  },
+  {
+   "id": "js_error",
+   "truth": true,
+   "note": "page looks fine but something feels off, dev console?",
+   "baseline_is_bug": true,
+   "baseline_title": "Uncaught JavaScript error occurs in the page onload event",
+   "baseline_s": 18,
+   "final": "reproduced",
+   "title": "Uncaught JavaScript error thrown in page onload event",
+   "is_bug_claimed": true,
+   "gate": {
+    "reproducible": 0.9,
+    "checkable": 0.94,
+    "severity": "major",
+    "severity_confidence": 0.25,
+    "missing": [],
+    "ready": true
+   },
+   "summary": "Navigating to https://the-internet.herokuapp.com/javascript_error rendered the page normally, but an uncaught JavaScript error (Cannot read properties of undefined (reading 'xyz')) was emitted during page load. A 404 console error was also logged.",
+   "attempts": 1,
+   "system_s": 92,
+   "timings": {
+    "upload": 3.596021890640259,
+    "watch": 28.564126014709473,
+    "gate": 0.20329499244689941,
+    "reproduce": 59.666306018829346
+   }
+  },
+  {
+   "id": "redirect_ok",
+   "truth": false,
+   "note": "link takes me to another page",
+   "baseline_is_bug": false,
+   "baseline_title": "Link navigates to Status Codes page as expected",
+   "baseline_s": 15,
+   "final": "not_a_bug",
+   "title": "Expected behavior: clicking 'here' link on Redirection page navigates to Status Codes page",
+   "is_bug_claimed": false,
+   "gate": {
+    "reproducible": 0.73,
+    "checkable": 0.55,
+    "severity": "other",
+    "severity_confidence": 0.98,
+    "missing": [],
+    "ready": true
+   },
+   "summary": null,
+   "attempts": null,
+   "system_s": 33,
+   "timings": {
+    "upload": 3.044970989227295,
+    "watch": 29.45299220085144,
+    "gate": 0.21428608894348145
+   }
+  },
+  {
+   "id": "hovers_ok",
+   "truth": false,
+   "note": "names only show when mouse is on the picture",
+   "baseline_is_bug": false,
+   "baseline_title": "Hovers page displays user names only on image hover (expected behavior)",
+   "baseline_s": 16,
+   "final": "not_a_bug",
+   "title": "Expected hover behavior on Hovers page reported as bug",
+   "is_bug_claimed": false,
+   "gate": {
+    "reproducible": 0.47,
+    "checkable": 0.31,
+    "severity": "other",
+    "severity_confidence": 0.99,
+    "missing": [
+     "a starting URL or clearer steps",
+     "what exactly goes wrong on screen"
+    ],
+    "ready": false
+   },
+   "summary": null,
+   "attempts": null,
+   "system_s": 36,
+   "timings": {
+    "upload": 3.308577060699463,
+    "watch": 32.44013166427612,
+    "gate": 0.3150749206542969
+   }
+  },
+  {
+   "id": "slow_ajax",
+   "truth": false,
+   "note": "hello world takes forever to show after start",
+   "baseline_is_bug": false,
+   "baseline_title": "Dynamic loading displays Hello World! after 5 seconds as expected",
+   "baseline_s": 15,
+   "final": "not_a_bug",
+   "title": "Expected 5-second loading delay before 'Hello World!' appears after clicking Start",
+   "is_bug_claimed": false,
+   "gate": {
+    "reproducible": 0.77,
+    "checkable": 0.89,
+    "severity": "other",
+    "severity_confidence": 0.99,
+    "missing": [],
+    "ready": true
+   },
+   "summary": null,
+   "attempts": null,
+   "system_s": 35,
+   "timings": {
+    "upload": 3.460489273071289,
+    "watch": 31.376505851745605,
+    "gate": 0.19048285484313965
+   }
+  },
+  {
+   "id": "dropdown_ok",
+   "truth": false,
+   "note": "dropdown works i think but first option cant be picked",
+   "baseline_is_bug": false,
+   "baseline_title": "Dropdown functions as expected; first placeholder option is intentionally disabled",
+   "baseline_s": 18,
+   "final": "not_a_bug",
+   "title": "Dropdown works as expected; first placeholder option is disabled by design",
+   "is_bug_claimed": false,
+   "gate": {
+    "reproducible": 0.47,
+    "checkable": 0.8,
+    "severity": "other",
+    "severity_confidence": 0.98,
+    "missing": [
+     "a starting URL or clearer steps"
+    ],
+    "ready": false
+   },
+   "summary": null,
+   "attempts": null,
+   "system_s": 79,
+   "timings": {
+    "upload": 2.8715319633483887,
+    "watch": 76.09101915359497,
+    "gate": 0.2417619228363037
+   }
+  }
+ ]
+}

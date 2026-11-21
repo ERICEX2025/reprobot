@@ -124,6 +124,19 @@ def watch(video_file, note, model=NEON, agentic=True):
     return json.loads(it.output_text)
 
 
+def _looks_clean(report):
+    """Guard: seen once in testing, the model leaked its own reasoning into a string field."""
+    texts = [report.get("title", ""), report.get("expected", ""), report.get("actual", ""), report.get("check", "")]
+    return len(report.get("title", "")) <= 160 and not any("```" in t for t in texts)
+
+
+def watch_checked(video_file, note):
+    report = watch(video_file, note)
+    if not _looks_clean(report):
+        report = watch(video_file, note)  # one retry
+    return report
+
+
 # ---------- step 2: gate ----------
 
 
@@ -259,7 +272,7 @@ def run(video_path, note="", rid="x", on_progress=lambda s: None):
 
     t = time.time()
     on_progress("Neon is watching the recording")
-    report = watch(vf, note)
+    report = watch_checked(vf, note)
     timings["watch"] = time.time() - t
 
     t = time.time()

@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ReproBot</title>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--ink:#14171c;--muted:#5d6672;--line:#d9dde3;--accent:#1a56db;--ok:#0f7b3f;--bad:#b42318;--warn:#a15c07;--code:#0f1419;--codeink:#d7dde5}
+@media (prefers-color-scheme:dark){:root{--bg:#0e1116;--card:#171b22;--ink:#e8ecf1;--muted:#96a0ad;--line:#2a313b;--accent:#7aa7ff;--ok:#4ad085;--bad:#ff8a7a;--warn:#f0b455;--code:#0a0d11}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;padding:24px 16px}
+main{max-width:920px;margin:0 auto;display:grid;gap:14px}
+h1{margin:0;font-size:26px;letter-spacing:-.01em}
+h2{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.sub{margin:2px 0 0;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+label{display:block;font-size:14px;color:var(--muted);margin:10px 0 4px}
+input[type=text],textarea{width:100%;font:inherit;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+button{font:inherit;font-weight:600;padding:10px 16px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.rec{background:var(--bad);border-color:var(--bad);color:#fff}
+button:disabled{opacity:.5;cursor:not-allowed}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.steps{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+.steps li{display:flex;gap:10px;align-items:baseline;color:var(--muted)}
+.steps li.on{color:var(--ink);font-weight:600}.steps li.done{color:var(--ok)}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--line);flex:none;transform:translateY(1px)}
+.on .dot{background:var(--accent);animation:p 1s infinite}.done .dot{background:var(--ok)}
+@keyframes p{50%{opacity:.3}}
+@media (prefers-reduced-motion:reduce){.on .dot{animation:none}}
+.verdict{font-size:22px;font-weight:700;margin:0}
+.reproduced{color:var(--bad)}.not_reproduced,.not_a_bug{color:var(--ok)}.needs_info,.blocked{color:var(--warn)}
+.pill{display:inline-block;border:1px solid var(--line);border-radius:99px;padding:2px 10px;font-size:13px;margin-right:6px}
+pre{background:var(--code);color:var(--codeink);padding:12px;border-radius:8px;overflow-x:auto;font:12.5px/1.5 ui-monospace,Menlo,monospace;max-height:320px}
+img.shot{max-width:100%;border:1px solid var(--line);border-radius:8px}
+table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.tw{overflow-x:auto}
+.big{font-size:34px;font-weight:700;line-height:1.1}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.y{color:var(--ok)}.n{color:var(--bad)}
+video{max-width:100%;border-radius:8px;border:1px solid var(--line)}
+ol{margin:6px 0;padding-left:22px}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>ReproBot</h1>
+  <p class="sub">Record a bug. Get a report an engineer can trust, because an agent already reproduced it in a real browser.</p>
+</header>
+
+<section class="card">
+  <h2>1. Show the bug</h2>
+  <div class="row">
+    <button id="rec" class="rec">Record a tab</button>
+    <span class="sub">or</span>
+    <input type="file" id="file" accept="video/*">
+  </div>
+  <video id="preview" controls hidden style="margin-top:10px;max-height:240px"></video>
+  <label for="url">Page URL (a tab recording doesn't show the address bar)</label>
+  <input type="text" id="url" placeholder="https://...">
+  <label for="note">What went wrong, in your own words (optional)</label>
+  <input type="text" id="note" placeholder="some pictures don't show up">
+  <div class="row" style="margin-top:12px"><button id="go" class="primary" disabled>Verify this bug</button><span id="msg" class="sub"></span></div>
+</section>
+
+<section class="card" id="progress" hidden>
+  <h2>2. What's happening</h2>
+  <ul class="steps">
+    <li data-k="upload"><span class="dot"></span><span>Upload the recording</span></li>
+    <li data-k="Neon"><span class="dot"></span><span><b>Gemini 4 Neon</b> watches the video and writes the report</span></li>
+    <li data-k="Decision"><span class="dot"></span><span><b>Gemini Decision 1</b> checks the report is complete enough to act on</span></li>
+    <li data-k="agent"><span class="dot"></span><span><b>Managed agent</b> reproduces it in a sandbox browser <span id="agentT"></span></span></li>
+  </ul>
+</section>
+
+<section class="card" id="result" hidden></section>
+
+<section class="card" id="evalCard">
+  <h2>Does it work? Tested on recordings it had never seen</h2>
+  <div id="eval" class="sub">Loading results...</div>
+</section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+let blob = null, recorder = null, stream = null;
+
+function setVideo(b) { blob = b; $("preview").src = URL.createObjectURL(b); $("preview").hidden = false; $("go").disabled = false; }
+$("file").onchange = () => { if ($("file").files[0]) setVideo($("file").files[0]); };
+
+$("rec").onclick = async () => {
+  if (recorder) { recorder.stop(); return; }
+  try {
+    stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 10 } });
+  } catch (e) { $("msg").textContent = "Recording was cancelled."; return; }
+  const chunks = [];
+  recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+  recorder.ondataavailable = (e) => chunks.push(e.data);
+  recorder.onstop = () => {
+    stream.getTracks().forEach((t) => t.stop());
+    setVideo(new Blob(chunks, { type: "video/webm" }));
+    recorder = null; $("rec").textContent = "Record again";
+  };
+  stream.getVideoTracks()[0].onended = () => recorder && recorder.stop();
+  recorder.start(); $("rec").textContent = "Stop recording";
+};
+
+const ORDER = ["upload", "Neon", "Decision", "agent"];
+function showStage(stage, done) {
+  const idx = done ? ORDER.length : ORDER.findIndex((k) => stage.includes(k));
+  document.querySelectorAll(".steps li").forEach((li, i) => {
+    li.className = i < idx ? "done" : i === idx ? "on" : "";
+  });
+  const m = /\((\d+)s\)/.exec(stage); $("agentT").textContent = m ? `(${m[1]}s)` : "";
+}
+
+const LABEL = {
+  reproduced: "Confirmed: the agent reproduced this bug",
+  not_reproduced: "Not reproduced: the agent followed the steps and the bug did not happen",
+  not_a_bug: "Not a bug: this looks like expected behavior",
+  needs_info: "Needs more information before it's worth an engineer's time",
+  blocked: "Blocked: the agent could not run the steps",
+};
+
+function render(job, jid) {
+  const r = job.result, rep = r.report, g = r.gate, v = r.verdict || {}, t = r.timings;
+  const secs = Object.entries(t).map(([k, s]) => `${k} ${s.toFixed(0)}s`).join(" · ");
+  $("result").hidden = false;
+  $("result").innerHTML = `
+    <h2>3. Result</h2>
+    <p class="verdict ${r.final}">${LABEL[r.final] || r.final}</p>
+    ${v.summary ? `<p>${esc(v.summary)}</p>` : ""}
+    ${g.missing?.length ? `<p class="needs_info">Ask the reporter for: ${esc(g.missing.join("; "))}</p>` : ""}
+    <p><span class="pill">severity: ${esc(g.severity)} (${Math.round(g.severity_confidence * 100)}%)</span>
+       <span class="pill">reproducible from text: ${Math.round(g.reproducible * 100)}%</span>
+       <span class="pill">checkable: ${Math.round(g.checkable * 100)}%</span>
+       ${v.attempts ? `<span class="pill">${v.attempts} runs</span>` : ""}</p>
+    <h2 style="margin-top:14px">Bug report</h2>
+    <p><b>${esc(rep.title)}</b><br><span class="sub">${esc(rep.start_url)}</span></p>
+    <ol>${rep.steps.map((s) => `<li><span class="sub">${s.t.toFixed(1)}s</span> ${esc(s.action)} ${esc(s.target)} ${s.value ? `<code>${esc(s.value)}</code>` : ""}</li>`).join("")}</ol>
+    <p><b>Expected:</b> ${esc(rep.expected)}<br><b>Actual:</b> ${esc(rep.actual)}<br><b>Automated check:</b> ${esc(rep.check)}</p>
+    ${job.has_screenshot ? `<h2 style="margin-top:14px">What the agent saw in its sandbox</h2><img class="shot" alt="Screenshot taken by the agent in its sandbox browser" src="/api/jobs/${jid}/screenshot">` : ""}
+    ${v.script ? `<details style="margin-top:12px"><summary><b>The script the agent wrote and ran</b></summary><pre>${esc(v.script)}</pre></details>` : ""}
+    <p class="sub" style="margin-top:10px">${secs}</p>`;
+}
+
+$("go").onclick = async () => {
+  if (!blob) return;
+  $("go").disabled = true; $("result").hidden = true; $("progress").hidden = false; showStage("upload");
+  const fd = new FormData();
+  fd.append("video", blob, "bug.webm"); fd.append("url", $("url").value); fd.append("note", $("note").value);
+  try {
+    const { id } = await (await fetch("/api/jobs", { method: "POST", body: fd })).json();
+    for (;;) {
+      await new Promise((r) => setTimeout(r, 1500));
+      const job = await (await fetch(`/api/jobs/${id}`)).json();
+      if (job.status === "running") { showStage(job.stage || ""); continue; }
+      if (job.status === "error") { $("msg").textContent = "Something failed: " + job.error; break; }
+      showStage("", true); render(job, id); $("msg").textContent = ""; break;
+    }
+  } catch (e) { $("msg").textContent = "Something failed: " + e.message; }
+  $("go").disabled = false;
+};
+
+async function loadEval() {
+  const e = await (await fetch("/api/eval")).json();
+  if (!e.n) { $("eval").textContent = "No evaluation results yet."; return; }
+  const mark = (ok) => `<span class="${ok ? "y" : "n"}">${ok ? "right" : "wrong"}</span>`;
+  $("eval").innerHTML = `
+    <div class="grid2">
+      <div><div class="big">${e.system_correct}/${e.n}</div>ReproBot: report, gate, then reproduce<br><span class="sub">${e.system_false_alarms} false alarms</span></div>
+      <div><div class="big">${e.baseline_correct}/${e.n}</div>Baseline: one model call on the video<br><span class="sub">${e.baseline_false_alarms} false alarms</span></div>
+    </div>
+    <p class="sub" style="margin-top:10px">Each case is a screen recording of a real page plus a vague note. The question: is this a real, reproducible bug?
+    Some recordings show correct behavior that a user mistook for a bug.</p>
+    <div class="tw"><table><tr><th>Recording</th><th>User's note</th><th>Really a bug?</th><th>Baseline</th><th>ReproBot</th></tr>
+    ${e.rows.map((r) => `<tr><td>${esc(r.id)}</td><td class="sub">${esc(r.note)}</td><td>${r.truth ? "yes" : "no"}</td>
+      <td>${r.baseline_is_bug === undefined ? "error" : (r.baseline_is_bug ? "bug" : "not a bug") + " · " + mark(r.baseline_is_bug === r.truth)}</td>
+      <td>${esc(r.final || "error")} · ${mark((r.final === "reproduced") === r.truth)}</td></tr>`).join("")}</table></div>`;
+}
+loadEval();
+</script>
+</body>
+</html>
