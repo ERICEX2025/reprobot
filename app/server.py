@@ -163,6 +163,11 @@ def live():
     return FileResponse(ROOT / "web" / "stage.html")
 
 
+@app.get("/on")
+def dashcam():
+    return FileResponse(ROOT / "web" / "on.html")
+
+
 @app.get("/live-classic")
 def live_classic():
     return FileResponse(ROOT / "web" / "live.html")

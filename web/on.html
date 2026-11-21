@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ReproBot Dashcam</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root{--paper:#f3f4f6;--panel:#fff;--ink:#12161c;--soft:#586170;--rule:#d6dae1;--idle:#e6e9ee;
+  --fail:#c2321d;--fail-bg:#fbe7e3;--pass:#17804f;--pass-bg:#dff3e8;--busy:#a86a00;--busy-bg:#fbefd2;--term:#101a2b;
+  --sans:"IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 var(--sans);padding:28px 20px 60px}
+main{max-width:860px;margin:0 auto;display:grid;gap:18px}
+h1{margin:0;font-size:30px;letter-spacing:-.015em;line-height:1.1}
+p{margin:0}.soft{color:var(--soft)}
+.card{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:18px}
+label{display:block;font-size:14px;color:var(--soft);margin:12px 0 4px}
+input{width:100%;font:15px var(--sans);padding:9px 10px;border:1px solid var(--rule);border-radius:7px;background:var(--paper);color:var(--ink)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+button{font:600 15px var(--sans);padding:10px 16px;border-radius:8px;border:1px solid var(--rule);background:var(--panel);color:var(--ink);cursor:pointer}
+button.go{background:var(--ink);border-color:var(--ink);color:#fff}
+button.flag{background:var(--fail);border-color:var(--fail);color:#fff}
+button:disabled{opacity:.5;cursor:not-allowed}
+button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--idle);display:inline-block}
+.dot.rec{background:var(--fail);animation:blink 1.2s infinite}
+@keyframes blink{50%{opacity:.3}}
+@media (prefers-reduced-motion:reduce){.dot.rec{animation:none}}
+.flags{display:grid;gap:12px}
+.item{background:var(--panel);border:1px solid var(--rule);border-radius:10px;overflow:hidden}
+.item .head{display:grid;grid-template-columns:150px minmax(0,1fr);gap:14px;padding:12px}
+.item video{width:150px;aspect-ratio:4/3;object-fit:cover;border-radius:5px;background:#000}
+.item .said{font-weight:600}.item .stage{font:13px var(--mono);color:var(--soft);margin-top:4px}
+.item .title{margin-top:6px}
+.bar{padding:10px 14px;font-weight:700;font-size:18px;border-top:1px solid var(--rule)}
+.bar.busy{background:var(--busy-bg);color:var(--busy);font-size:15px;font-weight:600}
+.bar.no{background:var(--idle)}.bar.yes{background:var(--fail-bg);color:var(--fail)}.bar.fixed{background:var(--pass-bg);color:var(--pass)}
+.bar small{display:block;font-weight:400;font-size:14px;color:var(--soft);margin-top:2px}
+pre{margin:0;background:var(--term);color:#d5deeb;font:12.5px/1.5 var(--mono);padding:12px 14px;overflow-x:auto;white-space:pre-wrap;overflow-wrap:anywhere}
+pre .del{color:#ff8f7b}pre .add{color:#69d9a3}
+details summary{cursor:pointer;color:var(--soft);font-size:14px}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Turn it on. Click once when something breaks.</h1>
+  <p class="soft" style="margin-top:8px;max-width:62ch">ReproBot keeps the last 30 seconds of the tab you share. When you click the floating button, that clip is checked: is the bug real, can an agent reproduce it, and can it prove a fix. <a href="/live">Side-by-side demo</a></p>
+</header>
+
+<section class="card" id="setup">
+  <label for="url">The site you're testing</label>
+  <input id="url" value="https://ericko.dev/reprobot/">
+  <details style="margin-top:10px"><summary>Source code, so it can also prove a fix</summary>
+    <label for="repo">Public Git repository</label><input id="repo" value="https://github.com/ERICEX2025/reprobot">
+    <div class="two"><div><label for="subdir">Folder that is served</label><input id="subdir" value="docs"></div>
+    <div><label for="root">Where that folder is live</label><input id="root" value="https://ericko.dev/reprobot"></div></div>
+  </details>
+  <div class="row" style="margin-top:16px">
+    <button id="on" class="go">Turn on</button>
+    <button id="flag" class="flag" disabled>That was a bug</button>
+    <span class="row" style="gap:8px"><span class="dot" id="dot"></span><span id="status" class="soft">Off</span></span>
+  </div>
+  <p class="soft" id="hint" style="margin-top:10px;font-size:14px">Chrome will ask which tab to share. Pick the tab with your site, then use it as normal.</p>
+</section>
+
+<section class="flags" id="flags" aria-live="polite"></section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const KEEP = 30, HALF = KEEP / 2;   // seconds of history
+let stream = null, recs = [], pip = null, flags = [], timers = [];
+
+// Rolling history without stitching video: two recorders, each restarted every 30s, offset by 15s.
+// Whichever has been running longer always holds the last 15 to 30 seconds as one clean file.
+function startRecorder(slot) {
+  const r = { chunks: [], t0: Date.now(), rec: new MediaRecorder(stream, { mimeType: "video/webm", videoBitsPerSecond: 900000 }) };
+  r.rec.ondataavailable = (e) => e.data.size && r.chunks.push(e.data);
+  r.rec.start(); recs[slot] = r;
+}
+function cycle(slot) { const old = recs[slot]; if (old && old.rec.state !== "inactive") old.rec.stop(); startRecorder(slot); }
+function takeClip() {
+  return new Promise((resolve) => {
+    const slot = recs[0].t0 <= recs[1].t0 ? 0 : 1, r = recs[slot];   // the older recorder has more history
+    const secs = Math.round((Date.now() - r.t0) / 1000);
+    r.rec.onstop = () => resolve({ blob: new Blob(r.chunks, { type: "video/webm" }), secs });
+    r.rec.stop(); startRecorder(slot);
+  });
+}
+
+async function turnOn() {
+  try { stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 10 }, audio: false }); }
+  catch (e) { $("status").textContent = "Sharing was cancelled"; return; }
+  stream.getVideoTracks()[0].onended = turnOff;
+  startRecorder(0); setTimeout(() => stream && startRecorder(1), HALF * 1000);
+  timers = [setInterval(() => stream && cycle(0), KEEP * 1000), setTimeout(() => (timers[2] = setInterval(() => stream && cycle(1), KEEP * 1000)), HALF * 1000)];
+  $("on").textContent = "Turn off"; $("flag").disabled = false; $("dot").className = "dot rec";
+  $("status").textContent = "On. Keeping the last 30 seconds."; $("hint").textContent = "A small window floats on top of your screen. Click it when something goes wrong.";
+  openPip();
+}
+function turnOff() {
+  timers.forEach((t) => { clearInterval(t); clearTimeout(t); });
+  recs.forEach((r) => r && r.rec.state !== "inactive" && r.rec.stop()); recs = [];
+  if (stream) stream.getTracks().forEach((t) => t.stop()); stream = null;
+  if (pip) pip.close(); pip = null;
+  $("on").textContent = "Turn on"; $("flag").disabled = true; $("dot").className = "dot"; $("status").textContent = "Off";
+}
+
+// The floating always-on-top window (Chrome's Document Picture-in-Picture)
+async function openPip() {
+  if (!("documentPictureInPicture" in window)) { $("hint").textContent = "This browser can't float a window, so use the red button on this page."; return; }
+  try {
+    pip = await documentPictureInPicture.requestWindow({ width: 330, height: 190 });
+  } catch (e) { $("hint").textContent = "Couldn't open the floating window. Use the red button on this page."; return; }
+  pip.document.body.innerHTML = `
+    <style>body{margin:0;font:14px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#12161c;color:#e8ecf2;padding:10px;display:grid;gap:8px;grid-template-rows:auto auto 1fr}
+    button{font:700 16px inherit;padding:11px;border:0;border-radius:8px;background:#c2321d;color:#fff;cursor:pointer;width:100%}
+    button:active{transform:translateY(1px)}input{font:13px inherit;padding:7px 8px;border-radius:6px;border:1px solid #33405a;background:#1b2535;color:#fff;width:100%;box-sizing:border-box}
+    #log{font-size:12.5px;color:#a9b6c9;overflow:hidden}#log div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
+    .g{color:#69d9a3}.r{color:#ff8f7b}</style>
+    <button id="f">That was a bug</button><input id="n" placeholder="What went wrong? (optional)"><div id="log">Recording the last 30 seconds.</div>`;
+  pip.document.getElementById("f").onclick = () => flag(pip.document.getElementById("n"));
+  pip.document.getElementById("n").addEventListener("keydown", (e) => e.key === "Enter" && flag(pip.document.getElementById("n")));
+  pip.addEventListener("pagehide", () => (pip = null));
+}
+function pipLog() {
+  if (!pip) return; const el = pip.document.getElementById("log"); if (!el) return;
+  el.innerHTML = flags.slice(0, 3).map((f) => `<div class="${f.cls === "fixed" ? "g" : f.cls === "yes" ? "r" : ""}">${esc(f.short)}</div>`).join("") || "Recording the last 30 seconds.";
+}
+
+const SHORT = { fixed: "Fixed and proven", yes: "Real bug, reproduced", no: "Not a bug, dropped" };
+function diffHtml(d) { return esc(d).split("\n").filter((x) => !/^(diff --git|index |--- |\+\+\+ )/.test(x)).map((x) => x[0] === "-" ? `<span class="del">${x}</span>` : x[0] === "+" ? `<span class="add">${x}</span>` : x).join("\n"); }
+
+function draw() {
+  $("flags").innerHTML = flags.map((f) => {
+    const r = f.job && f.job.result, p = (f.job && f.job.partial) || {}, rep = p.report || (r && r.report), fx = r && r.fix, v = r && r.verdict;
+    let bar = `<div class="bar busy">${esc(f.stage)}</div>`, more = "";
+    if (f.cls) {
+      const head = { fixed: "Real bug. Fixed, and the fix is proven.", yes: "Real bug, reproduced.", no: f.final === "not_reproduced" ? "Not real. The test passed on the live site." : f.final === "needs_info" ? "Too vague to act on." : "Not a bug." }[f.cls];
+      const why = fx && fx.status === "fixed" ? fx.root_cause : v ? v.summary : rep ? rep.actual : "";
+      bar = `<div class="bar ${f.cls}">${head}<small>${esc(why)}</small></div>`;
+      if (fx && fx.diff) more = `<pre>${diffHtml(fx.diff)}</pre>`;
+    }
+    return `<article class="item"><div class="head"><video src="${f.src}" muted loop autoplay playsinline></video>
+      <div><div class="said">${esc(f.note || "No note")}</div><div class="stage">${f.secs} seconds of video, flagged at ${f.at}</div>
+      ${rep ? `<div class="title">${esc(rep.title)}</div>` : ""}</div></div>${bar}${more}</article>`;
+  }).join("");
+  pipLog();
+}
+
+async function flag(noteEl) {
+  if (!stream || recs.length < 1 || !recs[0]) return;
+  if (!recs[1]) recs[1] = recs[0];                       // within the first 15 seconds there is only one recorder
+  const note = (noteEl && noteEl.value) || ""; if (noteEl) noteEl.value = "";
+  const { blob, secs } = await takeClip();
+  const f = { note, secs, at: new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }), src: URL.createObjectURL(blob), stage: "Sending the clip", short: "Checking: " + (note || "flagged clip") };
+  flags.unshift(f); draw();
+  const fd = new FormData();
+  fd.append("video", blob, "flag.webm"); fd.append("url", $("url").value); fd.append("note", note);
+  fd.append("repo_url", $("repo").value); fd.append("subdir", $("subdir").value); fd.append("site_root", $("root").value);
+  let jid;
+  try { jid = (await (await fetch("/api/jobs", { method: "POST", body: fd })).json()).id; }
+  catch (e) { f.stage = "Could not send the clip"; draw(); return; }
+  for (;;) {
+    await new Promise((r) => setTimeout(r, 1500));
+    const job = await (await fetch(`/api/jobs/${jid}`)).json(); f.job = job;
+    if (job.status === "running") { f.stage = job.stage.replace(/^agent working/, "The agent is testing the live site").replace(/^fix agent working/, "The agent is fixing the source"); f.short = "Checking: " + f.stage; draw(); continue; }
+    if (job.status === "error") { f.stage = "Something failed: " + job.error; f.short = "Failed"; draw(); break; }
+    const r = job.result; f.final = r.final;
+    f.cls = r.fix && r.fix.status === "fixed" ? "fixed" : r.final === "reproduced" ? "yes" : "no";
+    f.short = SHORT[f.cls] + ": " + (r.report.title || "");
+    draw(); break;
+  }
+}
+
+$("on").onclick = () => (stream ? turnOff() : turnOn());
+$("flag").onclick = () => flag(null);
+</script>
+</body>
+</html>
