@@ -8,10 +8,14 @@ Step 4  verdict  Gemini 4 Hydrogen turns the agent's free-form log into a strict
 Step 5  fix      Optional, when the site's source repo is given: the agent (Neon) clones it, confirms the bug
                  locally, patches the cause and re-runs its own reproduction until it prints BUG_ABSENT.
 
+Repo mode (run_repo, reproduce_repo, fix_repo) is for bugs with no live buggy site: the agent checks out the
+project at a given commit in its sandbox, starts it there, reproduces against localhost and then fixes.
+
 The baseline used in the evaluation is one Hydrogen call on the video with no verification.
 """
 import json
 import os
+import re
 import threading
 import time
 from google import genai
@@ -111,7 +115,7 @@ Write a bug report that another engineer could reproduce WITHOUT watching the vi
 Only describe what is visible in the recording. Do not invent URLs, labels or values."""
 
 
-def watch(video_file, note, model=NEON, agentic=True):
+def watch(video_file, note, model=NEON, agentic=True, timeout=600):
     item = {"type": "video", "uri": video_file.uri, "mime_type": video_file.mime_type}
     if agentic:
         item["processing"] = "agentic"
@@ -122,7 +126,13 @@ def watch(video_file, note, model=NEON, agentic=True):
         generation_config={"thinking_level": "high"},
         background=True,
     )
-    it = _wait_interaction(it)
+    it = _wait_interaction(it, timeout=timeout)
+    if getattr(it, "status", None) in ("in_progress", "queued"):
+        try:
+            beta.interactions.cancel(id=it.id)
+        except Exception:
+            pass
+        raise TimeoutError("watch timed out")
     return json.loads(it.output_text)
 
 
@@ -133,7 +143,10 @@ def _looks_clean(report):
 
 
 def watch_checked(video_file, note):
-    report = watch(video_file, note)
+    try:
+        report = watch(video_file, note, timeout=90)
+    except TimeoutError:  # agentic scrubbing can run long on videos where nothing happens
+        report = watch(video_file, note, agentic=False, timeout=120)
     if not _looks_clean(report):
         report = watch(video_file, note)  # one retry
     return report
@@ -221,7 +234,65 @@ Do this:
 Never submit forms with real personal data, make purchases or change anything outside the sandbox."""
 
 
-def reproduce(report, rid, model=HYDROGEN, on_progress=None, keep_env=False):
+def activity(it, limit=8):
+    """Short, human-readable lines of what a managed agent is doing, from its step log."""
+    out = []
+    for st in getattr(it, "steps", None) or []:
+        d = st.model_dump() if hasattr(st, "model_dump") else dict(st)
+        if d.get("type") == "thought":
+            for part in d.get("summary") or []:
+                m = re.search(r"\*\*(.+?)\*\*", part.get("text") or "")
+                if m:
+                    out.append({"kind": "thought", "text": m.group(1)})
+        elif d.get("type") == "code_execution_call":
+            code = ((d.get("arguments") or {}).get("code") or "").strip().splitlines()
+            if code:
+                out.append({"kind": "run", "text": code[0][:110]})
+        elif d.get("type") == "code_execution_result":
+            res = d.get("result") or ""
+            for mark in ("BUG_PRESENT", "BUG_ABSENT"):
+                if mark in res:
+                    out.append({"kind": "mark", "text": f"{mark} x{res.count(mark)}"})
+    return out[-limit:]
+
+
+def follow(interaction_id, on_activity, limit=8):
+    """Stream a running agent's steps and report short readable lines as they happen."""
+    def go():
+        lines, thought = [], ""
+        try:
+            for ev in beta.interactions.get(id=interaction_id, stream=True):
+                d = ev.model_dump() if hasattr(ev, "model_dump") else dict(ev)
+                kind, st = d.get("event_type"), d.get("step") or {}
+                if kind == "step.start" and st.get("type") == "code_execution_call":
+                    code = ((st.get("arguments") or {}).get("code") or "").strip().splitlines()
+                    if code:
+                        lines.append({"kind": "run", "text": code[0][:110]})
+                elif kind == "step.start" and st.get("type") == "code_execution_result":
+                    res = st.get("result") or ""
+                    for mark in ("BUG_PRESENT", "BUG_ABSENT"):
+                        if mark in res:
+                            lines.append({"kind": "mark", "text": f"{mark} x{res.count(mark)}"})
+                elif kind == "step.start" and st.get("type") == "thought":
+                    thought = ""
+                elif kind == "step.delta":
+                    delta = d.get("delta") or {}
+                    text = delta.get("text") or (delta.get("content") or {}).get("text") if isinstance(delta.get("content"), dict) else delta.get("text")
+                    if text and delta.get("type") != "text":
+                        thought += text
+                        m = re.search(r"\*\*(.+?)\*\*", thought)
+                        if m:
+                            lines.append({"kind": "thought", "text": m.group(1)})
+                            thought = ""
+                else:
+                    continue
+                on_activity(lines[-limit:])
+        except Exception:
+            pass  # the feed is cosmetic; never let it break a run
+    threading.Thread(target=go, daemon=True).start()
+
+
+def reproduce(report, rid, model=HYDROGEN, on_progress=None, keep_env=False, on_activity=None):
     env = _checkout_env()
     try:
         it = beta.interactions.create(
@@ -231,6 +302,8 @@ def reproduce(report, rid, model=HYDROGEN, on_progress=None, keep_env=False):
             input=REPRO_PROMPT.format(report=json.dumps(report, indent=1), rid=rid),
             background=True,
         )
+        if on_activity:
+            follow(it.id, on_activity)
         t0 = time.time()
         while getattr(it, "status", None) in ("in_progress", "queued") and time.time() - t0 < 480:
             time.sleep(4)
@@ -337,7 +410,7 @@ Final answer: fixed, not_fixed or cannot_confirm_locally; the root cause (file a
 and after; and the diff verbatim. Do not push, open pull requests or change anything outside the sandbox."""
 
 
-def fix(report, verdict, repo_url, subdir, site_root, rid, on_progress=None):
+def fix(report, verdict, repo_url, subdir, site_root, rid, on_progress=None, on_activity=None):
     env = verdict["environment_id"]
     _take_env(env)
     try:
@@ -350,6 +423,8 @@ def fix(report, verdict, repo_url, subdir, site_root, rid, on_progress=None):
                                     port=8700 + sum(map(ord, rid)) % 200),
             background=True,
         )
+        if on_activity:
+            follow(it.id, on_activity)
         t0 = time.time()
         while getattr(it, "status", None) in ("in_progress", "queued") and time.time() - t0 < 600:
             time.sleep(4)
@@ -379,12 +454,223 @@ def fix(report, verdict, repo_url, subdir, site_root, rid, on_progress=None):
     return out
 
 
-# ---------- whole pipeline ----------
+# ---------- repo mode: reproduce and fix a bug from a repository at a given commit (no live site) ----------
+# Used for real, already-fixed issues: the agent gets the report and the source at the PRE-FIX commit, nothing else.
+# These are additions; the live-URL functions above are unchanged.
 
 
-def run(video_path, note="", rid="x", on_progress=lambda s: None, source=None):
+def _trace(it):
+    """Compact list of what the agent did (commands, tool calls, results), for auditing afterwards."""
+    out = []
+    for s in getattr(it, "steps", None) or []:
+        t = getattr(s, "type", "")
+        if t == "code_execution_call":
+            out.append({"type": "run", "code": getattr(s.arguments, "code", str(s.arguments))})
+        elif t == "function_call":
+            out.append({"type": "call", "name": getattr(s, "name", ""), "args": json.dumps(s.arguments, default=str)[:6000]})
+        elif t in ("code_execution_result", "function_result"):
+            r = str(getattr(s, "result", ""))
+            out.append({"type": "result", "error": bool(getattr(s, "is_error", False)),
+                        "text": r if len(r) <= 3000 else r[:1500] + "\n...[cut]...\n" + r[-1500:]})
+        elif t in ("thought", "model_output"):
+            continue
+        else:
+            out.append({"type": t, "text": str(s)[:2000]})
+    return out
+
+
+def _run_agent(prompt, env, model, timeout, max_tokens, previous=None, on_progress=None, label="agent"):
+    """Start a managed-agent task and wait up to `timeout` seconds. On timeout, cancel it and say so."""
+    kw = {"previous_interaction_id": previous} if previous else {}
+    it = beta.interactions.create(
+        agent=AGENT, environment=env,
+        agent_config={"type": "antigravity", "model": model, "max_total_tokens": max_tokens},
+        input=prompt, background=True, **kw)
+    t0 = time.time()
+    while getattr(it, "status", None) in ("in_progress", "queued") and time.time() - t0 < timeout:
+        time.sleep(5)
+        try:
+            it = beta.interactions.get(id=it.id)
+        except Exception:
+            continue  # transient poll error; the deadline still applies
+        if on_progress:
+            on_progress(f"{label} working ({time.time() - t0:.0f}s)")
+    timed_out = getattr(it, "status", None) in ("in_progress", "queued")
+    if timed_out:
+        try:
+            beta.interactions.cancel(id=it.id)
+            time.sleep(3)
+            it = beta.interactions.get(id=it.id)
+        except Exception:
+            pass
+    return it, timed_out, round(time.time() - t0)
+
+
+REPO_REPRO_PROMPT = """You are a QA engineer verifying a bug report against a project's source code. Work only inside your sandbox.
+
+BUG REPORT (written from the reporter's screen recording)
+{report}
+
+PROJECT
+Repository: {clone_url}
+Commit to test: {sha}
+Install and start: {run_cmd}
+The app should then be reachable at: {app_url}
+
+RULES
+- Work only from the bug report above and the source code at that commit.
+- You must NOT browse or fetch GitHub issues, pull requests, commits, releases or changelogs, must NOT search the web
+  for this bug, and must NOT look up or download any later version of this project or its upstream fix.
+  The only network use allowed is the one-commit fetch below and installing the project's dependencies.
+
+Do this:
+1. Get exactly that one commit, with no later history:
+     mkdir -p /workspace/src_{rid} && cd /workspace/src_{rid} && git init -q && git remote add origin {clone_url}
+     git fetch -q --depth 1 origin {sha} && git checkout -q FETCH_HEAD && git remote remove origin
+2. Install and start the app in the background with the command above (adapt it only if it fails, and say what you
+   changed). Confirm {app_url} responds. If the project cannot be installed or started after reasonable effort, stop
+   and give the final answer setup_failed with the error.
+3. If Python Playwright is not installed, install it (pip install playwright) and use the system Chrome at
+   /usr/bin/google-chrome via executable_path (headless).
+4. Write ONE Playwright script at /workspace/repro_{rid}.py (outside the clone) that follows the report's steps in
+   the locally running app and then evaluates the report's check (use page.evaluate when useful). You may read the
+   source to find selectors and to understand how to drive the app, but the script must test the behaviour the
+   reporter saw, through the page, not just assert something about the source text.
+5. Run it up to 3 times (the bug may be intermittent). It must print BUG_PRESENT or BUG_ABSENT each run, and save a
+   screenshot to /workspace/repro_{rid}.png on the last run.
+6. Final answer: reproduced if BUG_PRESENT appeared in any run; not_reproduced if every run printed BUG_ABSENT;
+   blocked if the app runs but you could not carry out the steps; setup_failed if the app would not install or start.
+   Include the number of runs, what you observed, the exact commands used to install and start the app, the
+   screenshot path and the final script verbatim.
+Do not push, open pull requests, comment, or change anything outside the sandbox."""
+
+REPO_VERDICT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "verdict": {"type": "string", "enum": ["reproduced", "not_reproduced", "blocked", "setup_failed"]},
+        "attempts": {"type": "integer"},
+        "summary": {"type": "string", "description": "One or two sentences on what the agent observed"},
+        "setup": {"type": "string", "description": "Commands used to install and start the app, and any setup error"},
+        "screenshot_path": {"type": "string", "description": "Absolute path in the sandbox, or empty"},
+        "script": {"type": "string", "description": "The final Playwright script, verbatim"},
+    },
+    "required": ["verdict", "attempts", "summary", "setup", "screenshot_path", "script"],
+}
+
+
+def _is_text(b):
+    return bool(b) and b"\x00" not in b[:2000]
+
+
+def reproduce_repo(report, rid, clone_url, sha, run_cmd, app_url, model=HYDROGEN, timeout=720,
+                   max_tokens=400000, on_progress=None):
+    """Repo mode of step 3. Always uses a fresh sandbox (never the warm pool) and keeps it for fix_repo().
+    Returns the verdict dict; verdict is 'timeout' if the agent did not finish in time."""
+    prompt = REPO_REPRO_PROMPT.format(report=json.dumps(report, indent=1), rid=rid, clone_url=clone_url, sha=sha,
+                                      run_cmd=run_cmd, app_url=app_url)
+    it, timed_out, secs = _run_agent(prompt, "remote", model, timeout, max_tokens, on_progress=on_progress)
+    env = getattr(it, "environment_id", None)
+    raw = getattr(it, "output_text", None) or ""
+    base = {"agent_log": raw, "trace": _trace(it), "environment_id": env, "interaction_id": it.id,
+            "agent_status": getattr(it, "status", None), "agent_seconds": secs,
+            "total_tokens": getattr(getattr(it, "usage", None), "total_tokens", None)}
+    if timed_out or not raw.strip():
+        return {"verdict": "timeout" if timed_out else "no_output", "attempts": 0, "summary": "", "setup": "",
+                "screenshot_path": "", "script": "", "screenshot_png": None, **base}
+    v = beta.interactions.create(
+        model=HYDROGEN,
+        input="Extract the verification result from this QA agent log. Use only what the log says.\n\n" + raw,
+        response_format={"type": "text", "mime_type": "application/json", "schema": REPO_VERDICT_SCHEMA},
+        generation_config={"thinking_level": "low"},
+    )
+    verdict = json.loads(_wait_interaction(v).output_text)
+    verdict.update(base)
+    verdict["screenshot_png"] = _download(verdict.get("screenshot_path") or f"/workspace/repro_{rid}.png", env, _is_png)
+    script = _download(f"/workspace/repro_{rid}.py", env, _is_text)
+    if script:
+        verdict["script_file"] = script.decode("utf-8", "replace")
+    return verdict
+
+
+REPO_FIX_PROMPT = """You reproduced this bug locally with /workspace/repro_{rid}.py against the clone in /workspace/src_{rid}.
+Now prove a fix. Stay inside the sandbox. The same rules apply: work only from the bug report and the source at this
+commit; do NOT browse GitHub issues, pull requests or later commits, do NOT search the web for this bug, and do NOT
+look at any later version of this project.
+
+{tests_before}2. Find the root cause in the source. Make the smallest change that fixes it. Do not touch unrelated code and do not
+   weaken or edit the check in the reproduction script (keep /workspace/repro_{rid}.py byte-for-byte as it is).
+3. If the running app needs a rebuild or restart to pick up the change, do that. Then run the reproduction 3 more
+   times. Every run must print BUG_ABSENT. If the bug was intermittent, run it 8 times.
+{tests_after}5. Save `git diff` (run inside the clone; source changes only, no build output or lockfiles) to
+   /workspace/fix_{rid}.diff and a screenshot of the fixed page to /workspace/fixed_{rid}.png.
+Final answer: fixed or not_fixed; the root cause (file and line); what the reproduction printed before and after;
+the project's own test results before and after the change (or "no test command given"); and the diff verbatim.
+Do not push, open pull requests or change anything outside the sandbox."""
+
+_TESTS_BEFORE = """1. Before changing anything, run the project's own tests from the clone: {test_cmd}
+   Save the last 60 lines of output to /workspace/tests_before_{rid}.txt and note the pass/fail counts. Some tests
+   may already fail at this commit; that is fine, just record it. If the command runs longer than 4 minutes, stop it
+   and record "timed out".
+"""
+_TESTS_AFTER = """4. Run the project's own tests again with the same command. Save the last 60 lines to
+   /workspace/tests_after_{rid}.txt and note the pass/fail counts. Your change must not make any test fail that passed
+   before. Do not edit or delete existing tests to make them pass.
+"""
+
+REPO_FIX_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "status": {"type": "string", "enum": ["fixed", "not_fixed"]},
+        "root_cause": {"type": "string", "description": "One or two sentences, naming the file and line"},
+        "runs_before": {"type": "string", "description": "What the reproduction printed before the change"},
+        "runs_after": {"type": "string", "description": "What it printed after the change, for each run"},
+        "tests_before": {"type": "string", "description": "Project's own test result before the change (counts), or 'not run'"},
+        "tests_after": {"type": "string", "description": "Project's own test result after the change (counts), or 'not run'"},
+    },
+    "required": ["status", "root_cause", "runs_before", "runs_after", "tests_before", "tests_after"],
+}
+
+
+def fix_repo(verdict, rid, test_cmd=None, model=NEON, timeout=480, max_tokens=400000, on_progress=None):
+    """Repo mode of step 5. Continues in the sandbox and conversation left by reproduce_repo()."""
+    env = verdict["environment_id"]
+    prompt = REPO_FIX_PROMPT.format(
+        rid=rid,
+        tests_before=_TESTS_BEFORE.format(test_cmd=test_cmd, rid=rid) if test_cmd else "1. (No project test command was given.)\n",
+        tests_after=_TESTS_AFTER.format(rid=rid) if test_cmd else "4. (No project test command was given.)\n")
+    it, timed_out, secs = _run_agent(prompt, env, model, timeout, max_tokens, previous=verdict["interaction_id"],
+                                     on_progress=on_progress, label="fix agent")
+    raw = getattr(it, "output_text", None) or ""
+    out = {"status": "timeout" if timed_out else "no_output", "root_cause": "", "runs_before": "", "runs_after": "",
+           "tests_before": "", "tests_after": ""}
+    if raw.strip() and not timed_out:
+        x = beta.interactions.create(
+            model=HYDROGEN,
+            input="Extract the result from this engineer's log. Use only what the log says.\n\n" + raw,
+            response_format={"type": "text", "mime_type": "application/json", "schema": REPO_FIX_SCHEMA},
+            generation_config={"thinking_level": "low"},
+        )
+        out = json.loads(_wait_interaction(x).output_text)
+    out.update(agent_log=raw, trace=_trace(it), interaction_id=it.id, agent_status=getattr(it, "status", None),
+               agent_seconds=secs, total_tokens=getattr(getattr(it, "usage", None), "total_tokens", None))
+    diff = _download(f"/workspace/fix_{rid}.diff", env, _is_diff)
+    if diff:
+        out["diff"], out["diff_source"] = diff.decode("utf-8", "replace"), "file"
+    else:  # fall back to the diff the agent printed in its log
+        i = raw.find("diff --git")
+        out["diff"], out["diff_source"] = (raw[i:].split("```")[0].strip() if i >= 0 else None), "log"
+    for k in ("tests_before", "tests_after"):
+        b = _download(f"/workspace/{k}_{rid}.txt", env, _is_text) if test_cmd else None
+        out[k + "_output"] = b.decode("utf-8", "replace")[-4000:] if b else None
+    out["fixed_png"] = _download(f"/workspace/fixed_{rid}.png", env, _is_png)
+    return out
+
+
+def run_repo(video_path, note, rid, clone_url, sha, run_cmd, app_url, test_cmd=None, on_progress=lambda s: None,
+             deadline_s=1200):
+    """Whole pipeline in repo mode: watch, gate, reproduce at the given commit, fix. Same stop rules as run()."""
     timings = {}
-    t = time.time()
+    t_start = t = time.time()
     on_progress("uploading video")
     vf = upload_video(video_path)
     timings["upload"] = time.time() - t
@@ -395,7 +681,6 @@ def run(video_path, note="", rid="x", on_progress=lambda s: None, source=None):
     timings["watch"] = time.time() - t
 
     t = time.time()
-    on_progress("Decision 1 is checking the report")
     g = gate(report)
     timings["gate"] = time.time() - t
 
@@ -408,18 +693,72 @@ def run(video_path, note="", rid="x", on_progress=lambda s: None, source=None):
         return result
 
     t = time.time()
+    on_progress("managed agent is setting up the project and reproducing the bug")
+    v = reproduce_repo(report, rid, clone_url, sha, run_cmd, app_url, on_progress=on_progress)
+    timings["reproduce"] = time.time() - t
+    result["verdict"] = v
+    result["final"] = v["verdict"]
+
+    left = deadline_s - (time.time() - t_start)
+    if v["verdict"] == "reproduced":
+        if left < 120:
+            result["fix"] = {"status": "timeout", "note": "no time left for the fix step inside the case deadline"}
+        else:
+            t = time.time()
+            on_progress("fix agent is patching the source and re-running the reproduction")
+            result["fix"] = fix_repo(v, rid, test_cmd=test_cmd, timeout=left, on_progress=on_progress)
+            timings["fix"] = time.time() - t
+    return result
+
+
+# ---------- whole pipeline ----------
+
+
+def run(video_path, note="", rid="x", on_progress=lambda s: None, source=None, on_partial=None, on_activity=None):
+    part = on_partial or (lambda k, v: None)
+    timings = {}
+    t = time.time()
+    on_progress("uploading video")
+    vf = upload_video(video_path)
+    timings["upload"] = time.time() - t
+
+    t = time.time()
+    on_progress("Neon is watching the recording")
+    report = watch_checked(vf, note)
+    timings["watch"] = time.time() - t
+    part("report", report)
+
+    t = time.time()
+    on_progress("Decision 1 is checking the report")
+    g = gate(report)
+    timings["gate"] = time.time() - t
+    part("gate", g)
+
+    result = {"report": report, "gate": g, "timings": timings}
+    if not report.get("is_bug"):
+        result["final"] = "not_a_bug"
+        return result
+    if not g["ready"]:
+        result["final"] = "needs_info"
+        return result
+
+    t = time.time()
     on_progress("managed agent is reproducing it in a sandbox browser")
-    v = reproduce(report, rid, on_progress=on_progress, keep_env=bool(source))
+    v = reproduce(report, rid, on_progress=on_progress, keep_env=bool(source), on_activity=on_activity)
     timings["reproduce"] = time.time() - t
     if source and v["verdict"] != "reproduced":
         _return_env(v["environment_id"])
     result["verdict"] = v
     result["final"] = v["verdict"]
+    part("verdict", {k: v.get(k) for k in ("verdict", "attempts", "summary")})
 
     if source and v["verdict"] == "reproduced":
         t = time.time()
         on_progress("fix agent is patching the source and re-running the reproduction")
-        result["fix"] = fix(report, v, source["repo_url"], source["subdir"], source["site_root"], rid, on_progress=on_progress)
+        if on_activity:
+            on_activity([])
+        result["fix"] = fix(report, v, source["repo_url"], source["subdir"], source["site_root"], rid,
+                            on_progress=on_progress, on_activity=on_activity)
         timings["fix"] = time.time() - t
     return result
 

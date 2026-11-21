@@ -3,6 +3,7 @@ import json
 import pathlib
 import sys
 import threading
+import time
 import uuid
 
 from fastapi import FastAPI, File, Form, UploadFile
@@ -21,7 +22,12 @@ UPLOADS.mkdir(parents=True, exist_ok=True)
 def _work(jid, path, note, source):
     job = JOBS[jid]
     try:
-        result = pipeline.run(path, note, rid=jid, on_progress=lambda s: job.update(stage=s), source=source)
+        result = pipeline.run(
+            path, note, rid=jid, source=source,
+            on_progress=lambda s: job.update(stage=s),
+            on_partial=lambda k, v: job["partial"].update({k: v}),
+            on_activity=lambda lines: job.update(activity=lines),
+        )
         v = result.get("verdict") or {}
         job["screenshot"] = v.pop("screenshot_png", None)
         job["fixed_shot"] = (result.get("fix") or {}).pop("fixed_png", None)
@@ -38,7 +44,7 @@ async def create_job(video: UploadFile = File(...), url: str = Form(""), note: s
     path = UPLOADS / f"{jid}{ext}"
     path.write_bytes(await video.read())
     full_note = f"Page URL: {url} . User says: {note}" if url else note
-    JOBS[jid] = {"status": "running", "stage": "starting"}
+    JOBS[jid] = {"status": "running", "stage": "starting", "partial": {}, "activity": [], "t0": time.time()}
     source = {"repo_url": repo_url, "subdir": subdir or ".", "site_root": site_root} if repo_url and site_root else None
     threading.Thread(target=_work, args=(jid, str(path), full_note, source), daemon=True).start()
     return {"id": jid}
@@ -84,6 +90,37 @@ def get_shot(jid: str):
 def get_eval():
     p = ROOT / "data" / "eval.json"
     return json.loads(p.read_text()) if p.exists() else {"n": 0, "rows": []}
+
+
+DEMO_SITE = {"repo_url": "https://github.com/ERICEX2025/reprobot", "subdir": "docs",
+             "site_root": "https://ericko.dev/reprobot"}
+SAMPLES = {  # preset recordings for the side-by-side view
+    "vague": {"file": "data/demo/vague.webm", "url": "https://ericko.dev/reprobot/", "note": "your website is broken, please fix"},
+    "clear": {"file": "data/demo/clear.webm", "url": "https://ericko.dev/reprobot/", "note": "my promo code doesnt work??"},
+}
+
+
+@app.post("/api/sample/{name}")
+def run_sample(name: str):
+    smp = SAMPLES.get(name)
+    if not smp or not (ROOT / smp["file"]).exists():
+        return JSONResponse({"error": "no such sample"}, status_code=404)
+    jid = uuid.uuid4().hex[:8]
+    JOBS[jid] = {"status": "running", "stage": "starting", "partial": {}, "activity": [], "t0": time.time()}
+    note = f"Page URL: {smp['url']} . User says: {smp['note']}"
+    threading.Thread(target=_work, args=(jid, str(ROOT / smp["file"]), note, DEMO_SITE), daemon=True).start()
+    return {"id": jid, "note": smp["note"]}
+
+
+@app.get("/sample/{name}.webm")
+def sample_video(name: str):
+    smp = SAMPLES.get(name)
+    return FileResponse(ROOT / smp["file"], media_type="video/webm") if smp else Response(status_code=404)
+
+
+@app.get("/live")
+def live():
+    return FileResponse(ROOT / "web" / "live.html")
 
 
 @app.get("/")

@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ReproBot Live</title>
+<style>
+:root{--bg:#f5f6f4;--card:#fff;--ink:#151a18;--muted:#5a6661;--line:#d5dbd7;--idle:#eceeeb;
+  --verify:#0c7a52;--verify-soft:#e2f3ea;--bug:#b3301f;--bug-soft:#fbe9e5;--wait:#8a6100;--wait-soft:#fbf1d6;--code:#101614;--codeink:#d6e2dc}
+@media (prefers-color-scheme:dark){:root{--bg:#0e1211;--card:#171d1b;--ink:#e7eeea;--muted:#96a39d;--line:#2a3330;--idle:#1c2321;
+  --verify:#4fd39c;--verify-soft:#12291f;--bug:#ff8f7d;--bug-soft:#2e1612;--wait:#f0bf55;--wait-soft:#2b230f;--code:#090d0c}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;padding:18px 16px 40px}
+main{max-width:1240px;margin:0 auto;display:grid;gap:14px}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:end;justify-content:space-between}
+h1{margin:0;font-size:24px;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:2px 0 0}
+button{font:inherit;font-weight:600;padding:9px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+button.primary{background:var(--verify);border-color:var(--verify);color:var(--card)}
+button:disabled{opacity:.5;cursor:not-allowed}
+a{color:var(--verify)}
+.lanes{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;align-items:start}
+.lane{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;min-width:0;display:grid;gap:10px}
+.lane h2{margin:0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.inrow{display:grid;grid-template-columns:132px minmax(0,1fr);gap:12px;align-items:start}
+video{width:100%;border-radius:6px;border:1px solid var(--line);background:#000;aspect-ratio:4/3;object-fit:cover}
+.note{font:14px/1.4 ui-monospace,Menlo,monospace}
+.ctl{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.ctl button{padding:6px 10px;font-size:13px}
+input[type=text]{width:100%;font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);margin-top:6px}
+.clock{font:600 13px ui-monospace,Menlo,monospace;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* the tree */
+.tree{list-style:none;margin:0;padding:0;display:grid;gap:0}
+.step{position:relative;padding:0 0 12px 30px}
+.step::before{content:"";position:absolute;left:9px;top:20px;bottom:0;width:2px;background:var(--line)}
+.step:last-child::before{display:none}
+.dot{position:absolute;left:0;top:2px;width:20px;height:20px;border-radius:50%;background:var(--idle);border:2px solid var(--line)}
+.head{display:flex;gap:8px;justify-content:space-between;align-items:baseline}
+.name{font-weight:650}.who{font:12px ui-monospace,Menlo,monospace;color:var(--muted);white-space:nowrap}
+.body{font-size:14px;color:var(--muted);margin-top:3px;min-width:0;overflow-wrap:anywhere}
+.step.idle .name{color:var(--muted);font-weight:500}
+.step.on .dot{background:var(--wait);border-color:var(--wait);animation:pulse 1s infinite}
+.step.done .dot{background:var(--verify);border-color:var(--verify)}
+.step.done::before{background:var(--verify)}
+.step.stop .dot{background:var(--wait);border-color:var(--wait)}
+.step.fail .dot{background:var(--bug);border-color:var(--bug)}
+.step.skip{opacity:.38}
+@keyframes pulse{50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.step.on .dot{animation:none}}
+.chip{display:inline-block;border-radius:6px;padding:4px 9px;font-size:13px;font-weight:600;margin-top:6px}
+.chip.g{background:var(--verify-soft);color:var(--verify)}.chip.r{background:var(--bug-soft);color:var(--bug)}.chip.w{background:var(--wait-soft);color:var(--wait)}
+.meters{display:flex;gap:12px;flex-wrap:wrap;margin-top:4px;font-variant-numeric:tabular-nums}
+.feed{list-style:none;margin:6px 0 0;padding:8px 10px;background:var(--code);color:var(--codeink);border-radius:6px;font:12px/1.5 ui-monospace,Menlo,monospace;max-height:132px;overflow:hidden}
+.feed li{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.feed .thought{color:#9fd8bf}.feed .mark{color:#ffd27a;font-weight:700}
+pre{background:var(--code);color:var(--codeink);padding:10px;border-radius:6px;overflow-x:auto;font:12px/1.5 ui-monospace,Menlo,monospace;margin:6px 0 0;max-height:220px}
+.final{font-size:17px;font-weight:700;margin:0}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <div>
+    <h1>ReproBot, live</h1>
+    <p class="sub">Two recordings of the same site go through the same checks. Watch where each one stops. <a href="/">Single run</a></p>
+  </div>
+  <button id="both" class="primary">Run both</button>
+</header>
+<div class="lanes" id="lanes"></div>
+</main>
+
+<script>
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const SITE = { url: "https://ericko.dev/reprobot/", repo_url: "https://github.com/ERICEX2025/reprobot", subdir: "docs", site_root: "https://ericko.dev/reprobot" };
+const STEPS = [
+  ["watch", "Watch the recording", "Gemini 4 Neon"],
+  ["gate", "Is the report worth acting on?", "Gemini Decision 1"],
+  ["run1", "Write a test, run it on the live site", "Managed agent · Hydrogen"],
+  ["patch", "Patch the source, run the same test again", "Managed agent · Neon"],
+  ["out", "Result", ""],
+];
+const LANES = [
+  { id: "a", title: "A recording that says nothing", sample: "vague" },
+  { id: "b", title: "A recording that shows the bug", sample: "clear" },
+];
+const state = {};
+
+function laneHtml(l) {
+  return `<section class="lane" id="lane-${l.id}">
+    <div class="head"><h2>${l.title}</h2><span class="clock" id="clock-${l.id}"></span></div>
+    <div class="inrow">
+      <video id="vid-${l.id}" src="/sample/${l.sample}.webm" muted loop playsinline controls></video>
+      <div>
+        <div class="note" id="note-${l.id}"></div>
+        <input type="text" id="in-${l.id}" placeholder="What the user wrote" aria-label="User's note" hidden>
+        <div class="ctl">
+          <button data-act="run" data-l="${l.id}">Run sample</button>
+          <button data-act="rec" data-l="${l.id}">Record my own</button>
+        </div>
+      </div>
+    </div>
+    <ol class="tree" id="tree-${l.id}">${STEPS.map(([k, n, w]) => `<li class="step idle" data-k="${k}"><span class="dot"></span>
+      <div class="head"><span class="name">${n}</span><span class="who">${w}</span></div><div class="body"></div></li>`).join("")}</ol>
+  </section>`;
+}
+document.getElementById("lanes").innerHTML = LANES.map(laneHtml).join("");
+const NOTES = { vague: "your website is broken, please fix", clear: "my promo code doesnt work??" };
+LANES.forEach((l) => { document.getElementById(`note-${l.id}`).textContent = `"${NOTES[l.sample]}"`; state[l.id] = { blob: null }; });
+
+function setStep(id, k, cls, html) {
+  const el = document.querySelector(`#tree-${id} [data-k="${k}"]`);
+  el.className = "step " + cls;
+  if (html !== undefined) el.querySelector(".body").innerHTML = html;
+}
+function reset(id) { STEPS.forEach(([k]) => setStep(id, k, "idle", "")); }
+const feed = (lines) => lines && lines.length ? `<ul class="feed">${lines.map((x) => `<li class="${x.kind}">${x.kind === "run" ? "$ " : x.kind === "thought" ? "› " : ""}${esc(x.text)}</li>`).join("")}</ul>` : "";
+const pct = (x) => Math.round(x * 100) + "%";
+
+function paint(id, job) {
+  const stage = job.stage || "", p = job.partial || {}, r = job.result, done = job.status === "done";
+  const rep = p.report, g = p.gate, v = p.verdict || (r && r.verdict), fx = r && r.fix;
+  const order = stage.includes("Neon") || stage.includes("upload") || stage === "starting" ? 0 : stage.includes("Decision") ? 1 : stage.startsWith("fix") ? 3 : 2;
+  const cur = done ? 9 : order;
+
+  // 1 watch
+  if (rep) setStep(id, "watch", "done", `<b>${esc(rep.title)}</b><br>${rep.is_bug ? "Check: " + esc(rep.check) : esc(rep.actual)}
+      ${rep.is_bug ? "" : '<br><span class="chip g">Not a bug: nothing to chase</span>'}`);
+  else setStep(id, "watch", cur === 0 ? "on" : "idle", cur === 0 ? "Scrubbing through the video..." : "");
+  // 2 gate
+  if (g) setStep(id, "gate", g.ready && rep.is_bug ? "done" : "stop", `<div class="meters"><span>reproducible ${pct(g.reproducible)}</span><span>checkable ${pct(g.checkable)}</span><span>severity ${esc(g.severity)}</span></div>
+      ${!rep.is_bug ? "" : g.ready ? "" : `<span class="chip w">Ask the reporter for ${esc(g.missing.join(" and "))}</span>`}`);
+  else setStep(id, "gate", cur === 1 ? "on" : "idle");
+  // 3 run 1
+  if (v) setStep(id, "run1", v.verdict === "reproduced" ? "fail" : "stop", `${esc(v.summary || "")}<br>
+      <span class="chip ${v.verdict === "reproduced" ? "r" : "w"}">${v.verdict === "reproduced" ? "Test fails on the live site: the bug is real" : v.verdict === "not_reproduced" ? "Test passes: claim dropped" : "Blocked"}</span>`);
+  else if (cur === 2) setStep(id, "run1", "on", feed(job.activity));
+  else setStep(id, "run1", done ? "skip" : "idle");
+  // 4 patch
+  if (fx) setStep(id, "patch", fx.status === "fixed" ? "done" : "stop", `<b>Cause:</b> ${esc(fx.root_cause)}<br><b>After:</b> ${esc(fx.runs_after)}${fx.diff ? `<pre>${esc(fx.diff)}</pre>` : ""}`);
+  else if (cur === 3) setStep(id, "patch", "on", feed(job.activity));
+  else setStep(id, "patch", done ? "skip" : "idle");
+  // 5 result
+  if (done) {
+    const f = r.final, fixed = fx && fx.status === "fixed";
+    const msg = fixed ? ["g", "Proven fix, waiting for a person to approve"] : f === "reproduced" ? ["r", "Real bug, reproduced"] :
+      f === "not_a_bug" ? ["g", "Stopped early: no bug here, no engineer time spent"] : f === "needs_info" ? ["w", "Stopped early: sent back to the reporter with a question"] :
+      f === "not_reproduced" ? ["w", "Stopped: could not make it happen"] : ["w", f];
+    const secs = Object.values(r.timings).reduce((a, b) => a + b, 0);
+    setStep(id, "out", fixed || f === "not_a_bug" ? "done" : f === "reproduced" ? "fail" : "stop", `<p class="final"><span class="chip ${msg[0]}" style="font-size:15px">${msg[1]}</span></p>${Math.round(secs)} seconds`);
+  } else setStep(id, "out", "idle");
+  if (job.status === "error") setStep(id, "out", "stop", "Something failed: " + esc(job.error));
+}
+
+async function poll(id, jid) {
+  const t0 = Date.now(); const s = state[id]; s.jid = jid;
+  while (s.jid === jid) {
+    const job = await (await fetch(`/api/jobs/${jid}`)).json();
+    paint(id, job);
+    document.getElementById(`clock-${id}`).textContent = Math.round((Date.now() - t0) / 1000) + "s";
+    if (job.status !== "running") break;
+    await new Promise((r) => setTimeout(r, 1200));
+  }
+}
+
+async function runLane(l) {
+  const s = state[l.id]; reset(l.id); setStep(l.id, "watch", "on", "Uploading...");
+  document.getElementById(`vid-${l.id}`).play().catch(() => {});
+  let jid;
+  if (s.blob) {
+    const fd = new FormData();
+    fd.append("video", s.blob, "bug.webm"); fd.append("url", SITE.url); fd.append("note", document.getElementById(`in-${l.id}`).value);
+    fd.append("repo_url", SITE.repo_url); fd.append("subdir", SITE.subdir); fd.append("site_root", SITE.site_root);
+    jid = (await (await fetch("/api/jobs", { method: "POST", body: fd })).json()).id;
+  } else jid = (await (await fetch(`/api/sample/${l.sample}`, { method: "POST" })).json()).id;
+  poll(l.id, jid);
+}
+
+async function record(l, btn) {
+  const s = state[l.id];
+  if (s.rec) { s.rec.stop(); return; }
+  let stream;
+  try { stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 10 } }); } catch (e) { return; }
+  const chunks = []; s.rec = new MediaRecorder(stream, { mimeType: "video/webm" });
+  s.rec.ondataavailable = (e) => chunks.push(e.data);
+  s.rec.onstop = () => {
+    stream.getTracks().forEach((t) => t.stop()); s.rec = null; btn.textContent = "Record again";
+    s.blob = new Blob(chunks, { type: "video/webm" });
+    document.getElementById(`vid-${l.id}`).src = URL.createObjectURL(s.blob);
+    document.getElementById(`note-${l.id}`).textContent = "Your recording of the demo site:";
+    document.getElementById(`in-${l.id}`).hidden = false;
+    document.querySelector(`[data-act="run"][data-l="${l.id}"]`).textContent = "Run my recording";
+  };
+  stream.getVideoTracks()[0].onended = () => s.rec && s.rec.stop();
+  s.rec.start(); btn.textContent = "Stop recording";
+  window.open(SITE.url, "_blank");
+}
+
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  const l = LANES.find((x) => x.id === b.dataset.l);
+  if (b.dataset.act === "run") runLane(l); else record(l, b);
+});
+document.getElementById("both").onclick = () => LANES.forEach(runLane);
+</script>
+</body>
+</html>
