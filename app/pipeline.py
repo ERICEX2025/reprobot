@@ -115,17 +115,29 @@ Write a bug report that another engineer could reproduce WITHOUT watching the vi
 Only describe what is visible in the recording. Do not invent URLs, labels or values."""
 
 
-def watch(video_file, note, model=NEON, agentic=True, timeout=600):
+def watch(video_file, note, model=NEON, agentic=True, timeout=600, on_activity=None):
     item = {"type": "video", "uri": video_file.uri, "mime_type": video_file.mime_type}
     if agentic:
         item["processing"] = "agentic"
-    it = beta.interactions.create(
+    args = dict(
         model=model,
         input=[item, {"type": "text", "text": WATCH_PROMPT.format(note=note or "")}],
         response_format={"type": "text", "mime_type": "application/json", "schema": REPORT_SCHEMA},
-        generation_config={"thinking_level": "high"},
-        background=True,
     )
+    if on_activity:
+        # direct streaming: the model's thinking and the report text arrive as they are produced
+        lines, open_steps, out, t0 = [], {}, [], time.time()
+        stream = beta.interactions.create(
+            **args, generation_config={"thinking_level": "high", "thinking_summaries": "auto"}, stream=True)
+        for ev in stream:
+            d = ev.model_dump() if hasattr(ev, "model_dump") else dict(ev)
+            if _feed_event(d, lines, open_steps):
+                on_activity(_visible(lines))
+            if time.time() - t0 > timeout:
+                raise TimeoutError("watch timed out")
+        text = "".join(x["text"] for x in lines if x["kind"] == "text")
+        return json.loads(text)
+    it = beta.interactions.create(**args, generation_config={"thinking_level": "high"}, background=True)
     it = _wait_interaction(it, timeout=timeout)
     if getattr(it, "status", None) in ("in_progress", "queued"):
         try:
@@ -142,11 +154,11 @@ def _looks_clean(report):
     return len(report.get("title", "")) <= 160 and not any("```" in t for t in texts)
 
 
-def watch_checked(video_file, note):
+def watch_checked(video_file, note, on_activity=None):
     try:
-        report = watch(video_file, note, timeout=90)
-    except TimeoutError:  # agentic scrubbing can run long on videos where nothing happens
-        report = watch(video_file, note, agentic=False, timeout=120)
+        report = watch(video_file, note, timeout=150 if on_activity else 90, on_activity=on_activity)
+    except (TimeoutError, json.JSONDecodeError):  # agentic scrubbing can run long on videos where nothing happens
+        report = watch(video_file, note, agentic=False, timeout=120, on_activity=on_activity)
     if not _looks_clean(report):
         report = watch(video_file, note)  # one retry
     return report
@@ -256,39 +268,61 @@ def activity(it, limit=8):
     return out[-limit:]
 
 
-def follow(interaction_id, on_activity, limit=8):
-    """Stream a running agent's steps and report short readable lines as they happen."""
+def _clip(text, n):
+    text = text.strip()
+    return text if len(text) <= n else text[:n].rstrip() + " ..."
+
+
+def _feed_event(d, lines, open_steps):
+    """Turn one stream event into readable lines. Returns True when something visible changed."""
+    kind, idx, st = d.get("event_type"), d.get("index"), d.get("step") or {}
+    if kind == "step.start":
+        typ = st.get("type")
+        if typ == "code_execution_call":
+            lines.append({"kind": "run", "text": _clip((st.get("arguments") or {}).get("code") or "", 700)})
+        elif typ == "code_execution_result":
+            res = (st.get("result") or "").replace("[STDOUT]", "").replace("[STDERR]", "").strip()
+            if not res:
+                return False
+            lines.append({"kind": "out", "text": _clip(res, 500)})
+        elif typ == "processing_call":
+            lines.append({"kind": "tool", "text": "scrubbing through the video, zooming into frames"})
+        elif typ in ("thought", "model_output"):
+            line = {"kind": "thought" if typ == "thought" else "text", "text": ""}
+            for part in st.get("summary") or st.get("content") or []:
+                line["text"] += (part.get("text") or "") if isinstance(part, dict) else ""
+            open_steps[idx] = line
+            lines.append(line)
+        else:
+            return False
+        return True
+    if kind == "step.delta" and idx in open_steps:
+        delta = d.get("delta") or {}
+        text = delta.get("text")
+        if text is None and isinstance(delta.get("content"), dict):
+            text = delta["content"].get("text")
+        if not text:
+            return False
+        open_steps[idx]["text"] += text
+        return True
+    return False
+
+
+def _visible(lines, limit=60):
+    return [x for x in lines if x["text"].strip()][-limit:]
+
+
+def follow(interaction_id, on_activity, limit=60):
+    """Stream a running agent and report what it is thinking, running and writing, as it happens."""
     def go():
-        lines, thought = [], ""
+        lines, open_steps = [], {}
         try:
             for ev in beta.interactions.get(id=interaction_id, stream=True):
                 d = ev.model_dump() if hasattr(ev, "model_dump") else dict(ev)
-                kind, st = d.get("event_type"), d.get("step") or {}
-                if kind == "step.start" and st.get("type") == "code_execution_call":
-                    code = ((st.get("arguments") or {}).get("code") or "").strip().splitlines()
-                    if code:
-                        lines.append({"kind": "run", "text": code[0][:110]})
-                elif kind == "step.start" and st.get("type") == "code_execution_result":
-                    res = st.get("result") or ""
-                    for mark in ("BUG_PRESENT", "BUG_ABSENT"):
-                        if mark in res:
-                            lines.append({"kind": "mark", "text": f"{mark} x{res.count(mark)}"})
-                elif kind == "step.start" and st.get("type") == "thought":
-                    thought = ""
-                elif kind == "step.delta":
-                    delta = d.get("delta") or {}
-                    text = delta.get("text") or (delta.get("content") or {}).get("text") if isinstance(delta.get("content"), dict) else delta.get("text")
-                    if text and delta.get("type") != "text":
-                        thought += text
-                        m = re.search(r"\*\*(.+?)\*\*", thought)
-                        if m:
-                            lines.append({"kind": "thought", "text": m.group(1)})
-                            thought = ""
-                else:
-                    continue
-                on_activity(lines[-limit:])
+                if _feed_event(d, lines, open_steps):
+                    on_activity(_visible(lines, limit))
         except Exception:
-            pass  # the feed is cosmetic; never let it break a run
+            pass  # the feed is for people watching; never let it break a run
     threading.Thread(target=go, daemon=True).start()
 
 
@@ -716,6 +750,7 @@ def run_repo(video_path, note, rid, clone_url, sha, run_cmd, app_url, test_cmd=N
 
 def run(video_path, note="", rid="x", on_progress=lambda s: None, source=None, on_partial=None, on_activity=None):
     part = on_partial or (lambda k, v: None)
+    act = (lambda key: (lambda lines: on_activity(key, lines))) if on_activity else (lambda key: None)
     timings = {}
     t = time.time()
     on_progress("uploading video")
@@ -724,7 +759,7 @@ def run(video_path, note="", rid="x", on_progress=lambda s: None, source=None, o
 
     t = time.time()
     on_progress("Neon is watching the recording")
-    report = watch_checked(vf, note)
+    report = watch_checked(vf, note, on_activity=act("watch"))
     timings["watch"] = time.time() - t
     part("report", report)
 
@@ -744,7 +779,7 @@ def run(video_path, note="", rid="x", on_progress=lambda s: None, source=None, o
 
     t = time.time()
     on_progress("managed agent is reproducing it in a sandbox browser")
-    v = reproduce(report, rid, on_progress=on_progress, keep_env=bool(source), on_activity=on_activity)
+    v = reproduce(report, rid, on_progress=on_progress, keep_env=bool(source), on_activity=act("run1"))
     timings["reproduce"] = time.time() - t
     if source and v["verdict"] != "reproduced":
         _return_env(v["environment_id"])
@@ -755,10 +790,8 @@ def run(video_path, note="", rid="x", on_progress=lambda s: None, source=None, o
     if source and v["verdict"] == "reproduced":
         t = time.time()
         on_progress("fix agent is patching the source and re-running the reproduction")
-        if on_activity:
-            on_activity([])
         result["fix"] = fix(report, v, source["repo_url"], source["subdir"], source["site_root"], rid,
-                            on_progress=on_progress, on_activity=on_activity)
+                            on_progress=on_progress, on_activity=act("patch"))
         timings["fix"] = time.time() - t
     return result
 

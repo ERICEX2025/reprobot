@@ -57,6 +57,16 @@ input[type=text]{width:100%;font:inherit;padding:7px 9px;border:1px solid var(--
 pre{background:var(--code);color:var(--codeink);padding:10px;border-radius:6px;overflow-x:auto;font:12px/1.5 ui-monospace,Menlo,monospace;margin:6px 0 0;max-height:220px}
 .final{font-size:17px;font-weight:700;margin:0}
 
+.feed{max-height:240px;overflow-y:auto;scroll-behavior:smooth}
+.feed li{white-space:pre-wrap;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;margin-bottom:5px}
+.feed .thought{color:#9fd8bf}.feed .run{color:#e8edf0}.feed .out{color:#8fa39b}.feed .text{color:#ffe2a8}.feed .tool{color:#a9c7ff}
+.feed .tag{display:inline-block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;opacity:.65;margin-right:6px}
+.cursor::after{content:"▍";animation:pulse 1s infinite;margin-left:1px}
+details.kept{margin-top:6px}details.kept summary{cursor:pointer;font-size:13px;color:var(--muted)}
+.q{display:grid;grid-template-columns:minmax(0,1fr) 110px 44px;gap:8px;align-items:center;margin-top:5px;font-size:14px}
+.q .track{height:8px;border-radius:4px;background:var(--line);overflow:hidden}.q .fill{display:block;height:100%;background:var(--verify);transition:width .6s}
+.q .n{font-variant-numeric:tabular-nums;text-align:right;color:var(--ink);font-weight:600}
+ol.rsteps{margin:4px 0 0;padding-left:20px;font-size:14px}
 /* presentation mode: larger type, less chrome, readable from the back of a room */
 .thesis{font-size:clamp(22px,3vw,34px);font-weight:700;letter-spacing:-.015em;line-height:1.12;margin:0;max-width:26ch}
 .thesis em{font-style:normal;color:var(--verify)}
@@ -143,11 +153,22 @@ LANES.forEach((l) => { document.getElementById(`note-${l.id}`).textContent = `"$
 function setStep(id, k, cls, html) {
   const el = document.querySelector(`#tree-${id} [data-k="${k}"]`);
   el.className = "step " + cls;
-  if (html !== undefined) el.querySelector(".body").innerHTML = html;
+  const body = el.querySelector(".body");
+  if (html === undefined || body.dataset.html === html) return;  // unchanged: leave scroll position and open panels alone
+  const wasOpen = !!body.querySelector("details[open]");
+  body.dataset.html = html; body.innerHTML = html;
+  if (wasOpen) body.querySelectorAll("details").forEach((d) => (d.open = true));
+  const f = body.querySelector(".feed"); if (f && cls === "on") f.scrollTop = f.scrollHeight;
 }
 function reset(id) { STEPS.forEach(([k]) => setStep(id, k, "idle", "")); document.getElementById(`big-${id}`).innerHTML = ""; }
 const fmt = (t) => `${Math.floor(t / 60)}:${String(Math.round(t % 60)).padStart(2, "0")}`;
-const feed = (lines) => lines && lines.length ? `<ul class="feed">${lines.map((x) => `<li class="${x.kind}">${x.kind === "run" ? "$ " : x.kind === "thought" ? "› " : ""}${esc(x.text)}</li>`).join("")}</ul>` : "";
+const TAG = { thought: "thinking", run: "runs", out: "output", text: "writes", tool: "looks at" };
+function feed(lines, live) {
+  if (!lines || !lines.length) return live ? '<ul class="feed"><li class="thought cursor">waiting for the model</li></ul>' : "";
+  return `<ul class="feed">${lines.map((x, i) => `<li class="${x.kind}${live && i === lines.length - 1 ? " cursor" : ""}"><span class="tag">${TAG[x.kind] || x.kind}</span>${esc(x.text)}</li>`).join("")}</ul>`;
+}
+const kept = (lines, label) => lines && lines.length ? `<details class="kept"><summary>${label}</summary>${feed(lines, false)}</details>` : "";
+const bar = (label, v) => `<div class="q"><span>${label}</span><span class="track"><span class="fill" style="width:${Math.round(v * 100)}%"></span></span><span class="n">${pct(v)}</span></div>`;
 const pct = (x) => Math.round(x * 100) + "%";
 
 function paint(id, job) {
@@ -156,22 +177,27 @@ function paint(id, job) {
   const order = stage.includes("Neon") || stage.includes("upload") || stage === "starting" ? 0 : stage.includes("Decision") ? 1 : stage.startsWith("fix") ? 3 : 2;
   const cur = done ? 9 : order;
 
-  // 1 watch
-  if (rep) setStep(id, "watch", "done", `<b>${esc(rep.title)}</b><br>${rep.is_bug ? "Check: " + esc(rep.check) : esc(rep.actual)}
-      ${rep.is_bug ? "" : '<br><span class="chip g">Not a bug: nothing to chase</span>'}`);
-  else setStep(id, "watch", cur === 0 ? "on" : "idle", cur === 0 ? "Scrubbing through the video..." : "");
-  // 2 gate
-  if (g) setStep(id, "gate", g.ready && rep.is_bug ? "done" : "stop", `<div class="meters"><span>reproducible ${pct(g.reproducible)}</span><span>checkable ${pct(g.checkable)}</span><span>severity ${esc(g.severity)}</span></div>
+  const act = job.activity || {};
+  // 1 watch: Neon's thinking and the report as it is written
+  if (rep) setStep(id, "watch", "done", `<b>${esc(rep.title)}</b>
+      ${rep.is_bug ? `<ol class="rsteps">${(rep.steps || []).slice(0, 5).map((x) => `<li>${esc(x.action)} ${esc(x.target)}${x.value ? " <code>" + esc(x.value) + "</code>" : ""}</li>`).join("")}</ol>
+        <b>Expected:</b> ${esc(rep.expected)}<br><b>Actual:</b> ${esc(rep.actual)}<br><b>Test to run:</b> ${esc(rep.check)}` : esc(rep.actual) + '<br><span class="chip g">Not a bug: nothing to chase</span>'}
+      ${kept(act.watch, "What Neon thought and wrote")}`);
+  else setStep(id, "watch", cur === 0 ? "on" : "idle", cur === 0 ? feed(act.watch, true) : "");
+  // 2 gate: the three closed questions and Decision 1's answers
+  if (g) setStep(id, "gate", g.ready && rep.is_bug ? "done" : "stop", `${bar("Can it be reproduced from the text alone?", g.reproducible)}${bar("Is the check concrete enough to automate?", g.checkable)}
+      <div class="q"><span>How severe is it?</span><span></span><span class="n" style="grid-column:2/4">${esc(g.severity)}</span></div>
       ${!rep.is_bug ? "" : g.ready ? "" : `<span class="chip w">Ask the reporter for ${esc(g.missing.join(" and "))}</span>`}`);
-  else setStep(id, "gate", cur === 1 ? "on" : "idle");
-  // 3 run 1
+  else setStep(id, "gate", cur === 1 ? "on" : "idle", cur === 1 ? "Asking three yes-or-no questions..." : "");
+  // 3 run 1: the agent's thinking, commands and output
   if (v) setStep(id, "run1", v.verdict === "reproduced" ? "fail" : "stop", `${esc(v.summary || "")}<br>
-      <span class="chip ${v.verdict === "reproduced" ? "r" : "w"}">${v.verdict === "reproduced" ? "Test fails on the live site: the bug is real" : v.verdict === "not_reproduced" ? "Test passes: claim dropped" : "Blocked"}</span>`);
-  else if (cur === 2) setStep(id, "run1", "on", feed(job.activity));
+      <span class="chip ${v.verdict === "reproduced" ? "r" : "w"}">${v.verdict === "reproduced" ? "Test fails on the live site: the bug is real" : v.verdict === "not_reproduced" ? "Test passes: claim dropped" : "Blocked"}</span>
+      ${kept(act.run1, "What the agent did")}`);
+  else if (cur === 2) setStep(id, "run1", "on", feed(act.run1, true));
   else setStep(id, "run1", done ? "skip" : "idle");
   // 4 patch
-  if (fx) setStep(id, "patch", fx.status === "fixed" ? "done" : "stop", `<b>Cause:</b> ${esc(fx.root_cause)}<br><b>After:</b> ${esc(fx.runs_after)}${fx.diff ? `<pre>${esc(fx.diff)}</pre>` : ""}`);
-  else if (cur === 3) setStep(id, "patch", "on", feed(job.activity));
+  if (fx) setStep(id, "patch", fx.status === "fixed" ? "done" : "stop", `<b>Cause:</b> ${esc(fx.root_cause)}<br><b>After:</b> ${esc(fx.runs_after)}${fx.diff ? `<pre>${esc(fx.diff)}</pre>` : ""}${kept(act.patch, "What the agent did")}`);
+  else if (cur === 3) setStep(id, "patch", "on", feed(act.patch, true));
   else setStep(id, "patch", done ? "skip" : "idle");
   // 5 result
   if (done) {

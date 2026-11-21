@@ -26,7 +26,7 @@ def _work(jid, path, note, source):
             path, note, rid=jid, source=source,
             on_progress=lambda s: job.update(stage=s),
             on_partial=lambda k, v: job["partial"].update({k: v}),
-            on_activity=lambda lines: job.update(activity=lines),
+            on_activity=lambda key, lines: job["activity"].update({key: lines}),
         )
         v = result.get("verdict") or {}
         job["screenshot"] = v.pop("screenshot_png", None)
@@ -44,7 +44,7 @@ async def create_job(video: UploadFile = File(...), url: str = Form(""), note: s
     path = UPLOADS / f"{jid}{ext}"
     path.write_bytes(await video.read())
     full_note = f"Page URL: {url} . User says: {note}" if url else note
-    JOBS[jid] = {"status": "running", "stage": "starting", "partial": {}, "activity": [], "t0": time.time()}
+    JOBS[jid] = {"status": "running", "stage": "starting", "partial": {}, "activity": {}, "t0": time.time()}
     source = {"repo_url": repo_url, "subdir": subdir or ".", "site_root": site_root} if repo_url and site_root else None
     threading.Thread(target=_work, args=(jid, str(path), full_note, source), daemon=True).start()
     return {"id": jid}
@@ -145,7 +145,7 @@ def run_sample(name: str):
     if not smp or not (ROOT / smp["file"]).exists():
         return JSONResponse({"error": "no such sample"}, status_code=404)
     jid = uuid.uuid4().hex[:8]
-    JOBS[jid] = {"status": "running", "stage": "starting", "partial": {}, "activity": [], "t0": time.time()}
+    JOBS[jid] = {"status": "running", "stage": "starting", "partial": {}, "activity": {}, "t0": time.time()}
     note = f"Page URL: {smp['url']} . User says: {smp['note']}"
     threading.Thread(target=_work, args=(jid, str(ROOT / smp["file"]), note, DEMO_SITE), daemon=True).start()
     threading.Thread(target=_record, args=(jid, name), daemon=True).start()
