@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300">
+  <rect width="400" height="300" fill="#bcd9ea"/>
+  <rect x="40" y="70" width="320" height="190" fill="#fbf6ec"/>
+  <rect x="40" y="70" width="320" height="46" fill="#b3261e"/>
+  <text x="200" y="102" font-family="Georgia, serif" font-size="26" font-weight="bold" fill="#fbf6ec" text-anchor="middle">CORNER DINER</text>
+  <g fill="#8fc1d9" stroke="#2a2320" stroke-width="4"><rect x="60" y="136" width="110" height="80"/><rect x="230" y="136" width="110" height="80"/></g>
+  <rect x="180" y="150" width="40" height="110" fill="#2a2320"/>
+  <circle cx="212" cy="208" r="3" fill="#e9b949"/>
+  <rect y="260" width="400" height="40" fill="#74675f"/>
+  <circle cx="330" cy="40" r="20" fill="#e9b949"/>
+</svg>

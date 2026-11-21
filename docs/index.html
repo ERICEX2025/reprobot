@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Corner Diner | Order Online</title>
+  <meta name="description" content="Order breakfast, burgers and pie for pickup from Corner Diner.">
+  <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="index.html">
+        <img src="img/favicon.svg" alt="" width="28" height="28">
+        Corner Diner
+      </a>
+      <nav class="site-nav">
+        <a href="index.html" class="active">Menu</a>
+        <a href="about.html">About</a>
+      </nav>
+      <button id="cart-button" class="cart-button" aria-label="Open cart">
+        Cart <span id="cart-count" class="badge">0</span>
+      </button>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="wrap">
+      <p class="eyebrow">Pickup in about 20 minutes</p>
+      <h1>Breakfast all day. Pie every day.</h1>
+      <p class="lede">Order ahead and skip the line at Maple and 3rd. First online order? Use code <strong>DINER10</strong> for 10% off.</p>
+      <p class="staff-pick" id="staff-pick"></p>
+    </div>
+  </section>
+
+  <main class="wrap">
+    <div class="tabs" id="tabs" aria-label="Menu categories"></div>
+    <div class="menu-grid" id="menu"></div>
+  </main>
+
+  <div class="overlay" id="overlay"></div>
+  <aside class="drawer" id="cart-drawer" aria-label="Your order">
+    <div class="drawer-head">
+      <h2>Your order</h2>
+      <button id="cart-close" class="icon-button" aria-label="Close cart">&times;</button>
+    </div>
+
+    <div class="drawer-body">
+      <p id="cart-empty" class="muted">Your cart is empty. Add something tasty from the menu.</p>
+      <ul id="cart-lines" class="lines"></ul>
+
+      <h3 class="drawer-label">Promo code</h3>
+      <form id="promo-form" class="promo-form">
+        <input id="promo-input" type="text" placeholder="Enter code" aria-label="Promo code" autocomplete="off">
+        <button class="btn btn-small btn-outline" type="submit">Apply</button>
+      </form>
+      <p id="promo-error" class="error"></p>
+      <p id="promo-applied" class="promo-applied" hidden>
+        <span id="promo-label"></span>
+        <button id="promo-remove" class="link" type="button">Remove</button>
+      </p>
+
+      <h3 class="drawer-label">Add a tip for the kitchen</h3>
+      <div class="tabs tip-options" id="tips"></div>
+
+      <dl class="totals">
+        <div><dt>Subtotal</dt><dd id="subtotal"></dd></div>
+        <div id="row-discount" hidden><dt>Discount</dt><dd id="discount"></dd></div>
+        <div><dt>Tax (8.875%)</dt><dd id="tax"></dd></div>
+        <div><dt>Tip</dt><dd id="tip"></dd></div>
+        <div class="grand"><dt>Total</dt><dd id="total"></dd></div>
+      </dl>
+    </div>
+
+    <div class="drawer-foot">
+      <a class="btn btn-block" id="checkout-link" href="checkout.html">Checkout</a>
+      <button id="clear-cart" class="link" type="button">Clear cart</button>
+    </div>
+  </aside>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>Corner Diner, 214 Maple Street. Open every day until 9 PM.</p>
+      <p><a href="about.html">Hours and location</a></p>
+    </div>
+  </footer>
+
+  <script src="js/cart.js"></script>
+  <script src="js/menu.js"></script>
+</body>
+</html>

@@ -5,6 +5,8 @@ Step 2  gate     Gemini Decision 1 scores the report: can it be reproduced from 
 Step 3  repro    A Gemini managed agent (Antigravity, Linux sandbox) follows the report in a real
                  browser with Playwright and decides whether the bug really happens.
 Step 4  verdict  Gemini 4 Hydrogen turns the agent's free-form log into a strict JSON verdict.
+Step 5  fix      Optional, when the site's source repo is given: the agent (Neon) clones it, confirms the bug
+                 locally, patches the cause and re-runs its own reproduction until it prints BUG_ABSENT.
 
 The baseline used in the evaluation is one Hydrogen call on the video with no verification.
 """
@@ -237,6 +239,7 @@ def reproduce(report, rid, model=HYDROGEN, on_progress=None):
                 on_progress(f"agent working ({time.time() - t0:.0f}s)")
         env = getattr(it, "environment_id", None) or env
         raw = it.output_text or ""
+        repro_id = it.id
     finally:
         _return_env(env)
 
@@ -250,6 +253,7 @@ def reproduce(report, rid, model=HYDROGEN, on_progress=None):
     verdict = json.loads(_wait_interaction(v).output_text)
     verdict["agent_log"] = raw
     verdict["environment_id"] = env
+    verdict["interaction_id"] = repro_id
 
     shot = verdict.get("screenshot_path") or f"/workspace/repro_{rid}.png"
     try:
@@ -260,10 +264,103 @@ def reproduce(report, rid, model=HYDROGEN, on_progress=None):
     return verdict
 
 
+def prewarm(n=2):
+    """Start n sandboxes with Playwright already installed, so the first live run skips the install."""
+    def one():
+        try:
+            it = beta.interactions.create(
+                agent=AGENT, environment="remote",
+                agent_config={"type": "antigravity", "model": HYDROGEN, "max_total_tokens": 40000},
+                input="Install Python Playwright with pip. Then run a 3-line script that launches /usr/bin/google-chrome "
+                "headless through Playwright (executable_path), opens about:blank and prints READY. Reply with READY only.",
+                background=True,
+            )
+            it = _wait_interaction(it, timeout=300)
+            _return_env(getattr(it, "environment_id", None))
+        except Exception as e:
+            print("prewarm failed:", str(e)[:200])
+    for _ in range(n):
+        threading.Thread(target=one, daemon=True).start()
+
+
+def _take_env(env_id):
+    with _env_lock:
+        if env_id in _env_pool:
+            _env_pool.remove(env_id)
+
+
+# ---------- step 5 (optional): prove a fix against the site's source ----------
+
+FIX_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "status": {"type": "string", "enum": ["fixed", "not_fixed", "cannot_confirm_locally"]},
+        "root_cause": {"type": "string", "description": "One or two sentences, naming the file and line"},
+        "runs_before": {"type": "string", "description": "What the local reproduction printed before the change"},
+        "runs_after": {"type": "string", "description": "What it printed after the change, for each run"},
+    },
+    "required": ["status", "root_cause", "runs_before", "runs_after"],
+}
+
+FIX_PROMPT = """You reproduced this bug on the live site with /workspace/repro_{rid}.py. Now prove a fix. Stay inside the sandbox.
+
+Source: {repo_url} (the site's files are in the subfolder "{subdir}"; that subfolder is what is served at {site_root}).
+
+1. git clone --depth 1 the repo to /workspace/src_{rid}.
+2. Serve the subfolder locally in the background: python3 -m http.server 8765.
+3. Copy your reproduction script to /workspace/repro_local_{rid}.py and change ONLY the origin, so {site_root} becomes
+   http://localhost:8765 . Run it. It must print BUG_PRESENT. If it does not, stop and answer cannot_confirm_locally.
+4. Find the root cause in the source. Make the smallest change that fixes it. Do not touch unrelated code and do not
+   weaken or edit the check in the reproduction script.
+5. Run the local reproduction 3 more times. Every run must print BUG_ABSENT. If the bug was intermittent, run it 8 times.
+6. Save `git diff` (run inside the clone) to /workspace/fix_{rid}.diff and a full-page screenshot of the fixed page to
+   /workspace/fixed_{rid}.png.
+Final answer: fixed, not_fixed or cannot_confirm_locally; the root cause (file and line); what the runs printed before
+and after; and the diff verbatim. Do not push, open pull requests or change anything outside the sandbox."""
+
+
+def fix(report, verdict, repo_url, subdir, site_root, rid, on_progress=None):
+    env = verdict["environment_id"]
+    _take_env(env)
+    try:
+        it = beta.interactions.create(
+            agent=AGENT,
+            environment=env,
+            previous_interaction_id=verdict["interaction_id"],
+            agent_config={"type": "antigravity", "model": NEON, "max_total_tokens": 200000},
+            input=FIX_PROMPT.format(rid=rid, repo_url=repo_url, subdir=subdir, site_root=site_root.rstrip("/")),
+            background=True,
+        )
+        t0 = time.time()
+        while getattr(it, "status", None) in ("in_progress", "queued") and time.time() - t0 < 600:
+            time.sleep(4)
+            it = beta.interactions.get(id=it.id)
+            if on_progress:
+                on_progress(f"fix agent working ({time.time() - t0:.0f}s)")
+        raw = it.output_text or ""
+    finally:
+        _return_env(env)
+    x = beta.interactions.create(
+        model=HYDROGEN,
+        input="Extract the result from this engineer's log. Use only what the log says.\n\n" + raw,
+        response_format={"type": "text", "mime_type": "application/json", "schema": FIX_SCHEMA},
+        generation_config={"thinking_level": "low"},
+    )
+    out = json.loads(_wait_interaction(x).output_text)
+    out["agent_log"] = raw
+    for key, path in (("diff", f"/workspace/fix_{rid}.diff"), ("fixed_png", f"/workspace/fixed_{rid}.png")):
+        try:
+            data = beta.environments.files.download(path=path, environment_id=env)
+            out[key] = data.decode("utf-8", "replace") if key == "diff" else data
+        except Exception:
+            out[key] = None
+    return out
+
+
 # ---------- whole pipeline ----------
 
 
-def run(video_path, note="", rid="x", on_progress=lambda s: None):
+def run(video_path, note="", rid="x", on_progress=lambda s: None, source=None):
     timings = {}
     t = time.time()
     on_progress("uploading video")
@@ -294,6 +391,12 @@ def run(video_path, note="", rid="x", on_progress=lambda s: None):
     timings["reproduce"] = time.time() - t
     result["verdict"] = v
     result["final"] = v["verdict"]
+
+    if source and v["verdict"] == "reproduced":
+        t = time.time()
+        on_progress("fix agent is patching the source and re-running the reproduction")
+        result["fix"] = fix(report, v, source["repo_url"], source["subdir"], source["site_root"], rid, on_progress=on_progress)
+        timings["fix"] = time.time() - t
     return result
 
 

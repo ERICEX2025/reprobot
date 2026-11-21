@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>About | Corner Diner</title>
+  <link rel="icon" href="img/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="index.html">
+        <img src="img/favicon.svg" alt="" width="28" height="28">
+        Corner Diner
+      </a>
+      <nav class="site-nav">
+        <a href="index.html">Menu</a>
+        <a href="about.html" class="active">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap page">
+    <h1>A neighborhood counter since 1974</h1>
+    <p class="lede">Three generations of the Okafor family have been flipping pancakes on the same griddle. We still make the pie every morning and we still know most of you by name.</p>
+
+    <div class="about-grid">
+      <section class="card">
+        <h2>Hours</h2>
+        <table class="hours">
+          <tr><th>Monday to Friday</th><td>7:00 AM to 9:00 PM</td></tr>
+          <tr><th>Saturday</th><td>8:00 AM to 9:00 PM</td></tr>
+          <tr><th>Sunday</th><td>8:00 AM to 9:00 PM</td></tr>
+        </table>
+        <p class="muted small">Online orders close 30 minutes before the kitchen does.</p>
+      </section>
+
+      <section class="card">
+        <h2>Find us</h2>
+        <address>
+          214 Maple Street<br>
+          Corner of Maple and 3rd<br>
+          Brooklyn, NY 11215
+        </address>
+        <p><a href="tel:+17185550142">(718) 555-0142</a><br>
+        <a href="mailto:hello@cornerdiner.example">hello@cornerdiner.example</a></p>
+        <a class="btn" href="order.html">Order for pickup</a>
+      </section>
+    </div>
+
+    <section class="gallery">
+      <h2>Around the diner</h2>
+      <figure class="stage">
+        <img id="gallery-photo" src="img/counter.svg" alt="">
+        <figcaption>
+          <span id="gallery-caption"></span>
+          <span id="gallery-count" class="muted"></span>
+        </figcaption>
+      </figure>
+      <div class="gallery-nav">
+        <button id="gallery-prev" class="btn btn-small btn-outline">Previous</button>
+        <button id="gallery-next" class="btn btn-small btn-outline">Next</button>
+      </div>
+      <div id="gallery-thumbs" class="thumbs"></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>Corner Diner, 214 Maple Street. Open every day until 9 PM.</p>
+      <p><a href="index.html">Order online</a></p>
+    </div>
+  </footer>
+
+  <script src="js/gallery.js"></script>
+</body>
+</html>

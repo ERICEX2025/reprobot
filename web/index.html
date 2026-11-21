@@ -63,6 +63,13 @@ ol{margin:6px 0;padding-left:22px}
   <input type="text" id="url" placeholder="https://...">
   <label for="note">What went wrong, in your own words (optional)</label>
   <input type="text" id="note" placeholder="some pictures don't show up">
+  <details style="margin-top:10px"><summary class="sub">Have the site's source? The agent will also prove a fix.</summary>
+    <label for="repo">Public Git repository</label><input type="text" id="repo" placeholder="https://github.com/owner/repo">
+    <div class="grid2">
+      <div><label for="subdir">Folder that is served</label><input type="text" id="subdir" placeholder="docs"></div>
+      <div><label for="root">Where that folder is live</label><input type="text" id="root" placeholder="https://owner.github.io/repo"></div>
+    </div>
+  </details>
   <div class="row" style="margin-top:12px"><button id="go" class="primary" disabled>Verify this bug</button><span id="msg" class="sub"></span></div>
 </section>
 
@@ -72,7 +79,8 @@ ol{margin:6px 0;padding-left:22px}
     <li data-k="upload"><span class="dot"></span><span>Upload the recording</span></li>
     <li data-k="Neon"><span class="dot"></span><span><b>Gemini 4 Neon</b> watches the video and writes the report</span></li>
     <li data-k="Decision"><span class="dot"></span><span><b>Gemini Decision 1</b> checks the report is complete enough to act on</span></li>
-    <li data-k="agent"><span class="dot"></span><span><b>Managed agent</b> reproduces it in a sandbox browser <span id="agentT"></span></span></li>
+    <li data-k="agent is"><span class="dot"></span><span><b>Managed agent</b> reproduces it in a sandbox browser <span id="agentT"></span></span></li>
+    <li data-k="fix agent" id="fixStep" hidden><span class="dot"></span><span><b>Managed agent</b> patches the source and re-runs its reproduction <span id="fixT"></span></span></li>
   </ul>
 </section>
 
@@ -109,13 +117,17 @@ $("rec").onclick = async () => {
   recorder.start(); $("rec").textContent = "Stop recording";
 };
 
-const ORDER = ["upload", "Neon", "Decision", "agent"];
+const ORDER = ["upload", "Neon", "Decision", "reproducing", "fix agent"];
 function showStage(stage, done) {
-  const idx = done ? ORDER.length : ORDER.findIndex((k) => stage.includes(k));
+  let idx = done ? ORDER.length : ORDER.findIndex((k) => stage.includes(k));
+  if (!done && stage.startsWith("agent working")) idx = 3;
+  if (!done && stage.startsWith("fix")) idx = 4;
   document.querySelectorAll(".steps li").forEach((li, i) => {
     li.className = i < idx ? "done" : i === idx ? "on" : "";
   });
-  const m = /\((\d+)s\)/.exec(stage); $("agentT").textContent = m ? `(${m[1]}s)` : "";
+  const m = /\((\d+)s\)/.exec(stage);
+  if (stage.startsWith("fix")) $("fixT").textContent = m ? `(${m[1]}s)` : "";
+  else if (stage.startsWith("agent")) $("agentT").textContent = m ? `(${m[1]}s)` : "";
 }
 
 const LABEL = {
@@ -145,6 +157,13 @@ function render(job, jid) {
     <p><b>Expected:</b> ${esc(rep.expected)}<br><b>Actual:</b> ${esc(rep.actual)}<br><b>Automated check:</b> ${esc(rep.check)}</p>
     ${job.has_screenshot ? `<h2 style="margin-top:14px">What the agent saw in its sandbox</h2><img class="shot" alt="Screenshot taken by the agent in its sandbox browser" src="/api/jobs/${jid}/screenshot">` : ""}
     ${v.script ? `<details style="margin-top:12px"><summary><b>The script the agent wrote and ran</b></summary><pre>${esc(v.script)}</pre></details>` : ""}
+    ${r.fix ? `<h2 style="margin-top:16px">Proven fix</h2>
+      <p class="verdict ${r.fix.status === "fixed" ? "not_reproduced" : "needs_info"}">${r.fix.status === "fixed" ? "Fixed: the same reproduction now passes" : esc(r.fix.status.replace(/_/g, " "))}</p>
+      <p><b>Root cause:</b> ${esc(r.fix.root_cause)}</p>
+      <p class="sub">Before: ${esc(r.fix.runs_before)}<br>After: ${esc(r.fix.runs_after)}</p>
+      ${r.fix.diff ? `<pre>${esc(r.fix.diff)}</pre>` : ""}
+      ${job.has_fixed_shot ? `<img class="shot" alt="The page after the fix, in the agent's sandbox" src="/api/jobs/${jid}/fixed">` : ""}
+      <p class="sub">Nothing was pushed. A person reviews this diff before it goes anywhere.</p>` : ""}
     <p class="sub" style="margin-top:10px">${secs}</p>`;
 }
 
@@ -153,6 +172,8 @@ $("go").onclick = async () => {
   $("go").disabled = true; $("result").hidden = true; $("progress").hidden = false; showStage("upload");
   const fd = new FormData();
   fd.append("video", blob, "bug.webm"); fd.append("url", $("url").value); fd.append("note", $("note").value);
+  fd.append("repo_url", $("repo").value); fd.append("subdir", $("subdir").value); fd.append("site_root", $("root").value);
+  $("fixStep").hidden = !$("repo").value;
   try {
     const { id } = await (await fetch("/api/jobs", { method: "POST", body: fd })).json();
     for (;;) {
