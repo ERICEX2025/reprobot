@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ReproBot Live</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* One screen, no scrolling. Each lane is a test bench: the claim on top, a rail of four checks,
+   one window showing whichever model is working right now, and a verdict bar at the bottom.
+   Red and green are reserved for test results. */
+:root{
+  --paper:#f3f4f6; --panel:#ffffff; --ink:#12161c; --soft:#586170; --rule:#d6dae1; --idle:#e6e9ee;
+  --term:#101a2b; --term-ink:#d5deeb; --term-dim:#8494ab; --term-hi:#f4d58d; --term-cmd:#ffffff;
+  --fail:#c2321d; --fail-bg:#fbe7e3; --pass:#17804f; --pass-bg:#dff3e8; --busy:#a86a00; --busy-bg:#fbefd2;
+  --sans:"IBM Plex Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.4 var(--sans);overflow:hidden}
+.stage{height:100vh;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:14px;padding:18px 22px 16px;max-width:1720px;margin:0 auto}
+
+.top{display:flex;gap:20px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.thesis{margin:0;font-size:clamp(20px,2.1vw,30px);font-weight:700;letter-spacing:-.015em;line-height:1.12}
+.tools{display:flex;gap:10px;align-items:center}
+.mode{font:500 13px var(--mono);color:var(--soft)}
+button{font:600 14px var(--sans);padding:8px 13px;border-radius:7px;border:1px solid var(--rule);background:var(--panel);color:var(--ink);cursor:pointer}
+button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+button.go{background:var(--ink);border-color:var(--ink);color:var(--paper);padding:8px 18px}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:7px;overflow:hidden}
+.seg button{border:0;border-radius:0;font-weight:500}
+.seg button[aria-pressed="true"]{background:var(--idle);font-weight:700}
+
+.lanes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;min-height:0}
+.lane{background:var(--panel);border:1px solid var(--rule);border-radius:10px;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;min-height:0;overflow:hidden}
+
+.claim{display:grid;grid-template-columns:104px minmax(0,1fr) auto;gap:14px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--rule)}
+.claim video{width:104px;aspect-ratio:4/3;object-fit:cover;border-radius:5px;background:#000;display:block}
+.claim .from{font-size:13px;color:var(--soft)}
+.claim .said{font-size:clamp(17px,1.5vw,22px);font-weight:600;line-height:1.2;margin-top:2px}
+.claim .said::before{content:"\201C"}.claim .said::after{content:"\201D"}
+.clock{font:500 15px var(--mono);color:var(--soft);font-variant-numeric:tabular-nums}
+.own{display:flex;gap:6px;margin-top:6px}
+.own button{font-size:12px;padding:4px 8px;font-weight:500}
+.own input{font:13px var(--sans);padding:4px 7px;border:1px solid var(--rule);border-radius:5px;min-width:0;flex:1}
+
+.rail{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-bottom:1px solid var(--rule)}
+.rail li{padding:10px 12px 11px;border-right:1px solid var(--rule);min-width:0}
+.rail li:last-child{border-right:0}
+.rail .what{font-size:14px;font-weight:600;display:flex;gap:7px;align-items:center}
+.rail .by{font:12px var(--mono);color:var(--soft);margin-top:1px}
+.rail .got{font-size:13px;color:var(--soft);margin-top:6px;min-height:34px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.lamp{width:11px;height:11px;border-radius:50%;background:var(--idle);border:1.5px solid var(--rule);flex:none}
+li.on{background:var(--busy-bg)}li.on .lamp{background:var(--busy);border-color:var(--busy);animation:blink 1s infinite}
+li.done .lamp{background:var(--ink);border-color:var(--ink)}
+li.pass .lamp{background:var(--pass);border-color:var(--pass)}li.fail .lamp{background:var(--fail);border-color:var(--fail)}
+li.off{opacity:.38}
+.res{display:inline-block;font:600 12px var(--mono);padding:2px 7px;border-radius:4px;margin-right:6px}
+.res.f{background:var(--fail);color:#fff}.res.p{background:var(--pass);color:#fff}.res.n{background:var(--idle);color:var(--soft)}
+@keyframes blink{50%{opacity:.3}}
+
+.focus{min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr);background:var(--term);color:var(--term-ink)}
+.now{display:flex;justify-content:space-between;gap:12px;align-items:baseline;padding:9px 14px 8px;border-bottom:1px solid #22304a;font-size:14px}
+.now b{font-weight:600;color:#fff}
+.pane{min-height:0;overflow:hidden;padding:10px 14px 14px;font:13.5px/1.5 var(--mono);display:flex;flex-direction:column;justify-content:flex-end}
+.pane .line{white-space:pre-wrap;overflow-wrap:anywhere;margin-top:7px}
+.pane .thought{color:var(--term-dim);font-family:var(--sans);font-size:14.5px}
+.pane .thought b{color:var(--term-ink);font-weight:600}
+.pane.end{justify-content:flex-start;padding-top:16px}
+.pane .run{color:var(--term-cmd)}.pane .run::before{content:"$ ";color:var(--term-dim)}
+.pane .out{color:#9db0c9}
+.pane .text{color:var(--term-hi)}
+.pane .tool{color:#8fb8ff;font-family:var(--sans)}
+.pane .line:last-child.live::after{content:"\2588";animation:blink 1s infinite;margin-left:2px;opacity:.8}
+.pane .idle{color:var(--term-dim);font-family:var(--sans);font-size:15px;align-self:flex-start;margin:auto 0}
+.pane mark{background:none;font-weight:600;padding:0 1px}
+.pane mark.f{color:#ff8f7b}.pane mark.p{color:#69d9a3}
+.qs{display:grid;gap:14px;align-content:center;height:100%;font-family:var(--sans)}
+.qrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(90px,34%) 58px;gap:14px;align-items:center;font-size:clamp(15px,1.25vw,19px)}
+.qrow .track{height:10px;border-radius:5px;background:#22304a;overflow:hidden}
+.qrow .fill{display:block;height:100%;width:0;background:#8fb8ff;transition:width .7s ease-out}
+.qrow .pc{font:600 clamp(15px,1.25vw,19px) var(--mono);text-align:right;color:#fff}
+.sum{font-family:var(--sans);font-size:clamp(14.5px,1.15vw,17px);line-height:1.45;color:var(--term-ink);display:grid;gap:12px}
+.sum .clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sum b{color:#fff}
+.sum pre{margin:0;font:13px/1.5 var(--mono);background:#0a1220;border-radius:6px;padding:10px 12px;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere;max-height:11.5em}
+.sum .del{color:#ff8f7b}.sum .add{color:#69d9a3}
+
+.verdict{padding:13px 16px;border-top:1px solid var(--rule);display:flex;justify-content:space-between;gap:16px;align-items:baseline;min-height:58px}
+.verdict .v{font-size:clamp(19px,1.9vw,28px);font-weight:700;letter-spacing:-.01em;line-height:1.1}
+.verdict .w{font-size:14px;color:var(--soft);text-align:right}
+.verdict.wait .v{color:var(--soft);font-weight:500;font-size:16px}
+.verdict.no{background:var(--idle)}.verdict.no .v{color:var(--ink)}
+.verdict.yes{background:var(--fail-bg)}.verdict.yes .v{color:var(--fail)}
+.verdict.fixed{background:var(--pass-bg)}.verdict.fixed .v{color:var(--pass)}
+
+.proof{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;font-size:14px;color:var(--soft)}
+.proof div{display:flex;gap:12px;align-items:baseline}
+.proof b{font:700 26px var(--sans);color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.keys{position:fixed;right:22px;bottom:2px;font:11px var(--mono);color:var(--soft);opacity:.7}
+
+body.present .own,body.present .keys{display:none}
+@media (max-width:900px){body{overflow:auto}.stage{height:auto}.lanes{grid-template-columns:1fr}.lane{min-height:640px}.proof{grid-template-columns:1fr}.rail{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (prefers-reduced-motion:reduce){li.on .lamp,.pane .line:last-child.live::after{animation:none}.qrow .fill{transition:none}}
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="top">
+    <h1 class="thesis">Two bug reports. Both sound convincing. Only a test can tell which is real.</h1>
+    <div class="tools">
+      <span class="mode" id="mode"></span>
+      <div class="seg" role="group" aria-label="Mode"><button id="m-replay" aria-pressed="true">Replay</button><button id="m-live" aria-pressed="false">Live</button></div>
+      <button id="start" class="go">Start</button>
+    </div>
+  </div>
+  <div class="lanes" id="lanes"></div>
+  <div class="proof">
+    <div><b>13 / 15</b><span>recordings judged correctly. A single model call on the same videos got 10.</span></div>
+    <div><b>10 / 10</b><span>planted bugs fixed from a video and one sentence, every fix checked independently.</span></div>
+    <div><b>0</b><span>fixes accepted on a model's word. The test has to fail first, then pass unchanged.</span></div>
+  </div>
+</div>
+<div class="keys">space start, R replay, L live, P hide controls, F full screen</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmt = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+const pct = (x) => Math.round(x * 100) + "%";
+const SITE = { url: "https://ericko.dev/reprobot/", repo_url: "https://github.com/ERICEX2025/reprobot", subdir: "docs", site_root: "https://ericko.dev/reprobot" };
+const CHECKS = [
+  ["watch", "Watch the video", "Gemini 4 Neon", "Gemini 4 Neon is watching the recording"],
+  ["gate", "Vet the report", "Gemini Decision 1", "Gemini Decision 1 is vetting the report"],
+  ["run1", "Test the live site", "Agent, Hydrogen", "A managed agent is writing a test and running it on the live site"],
+  ["patch", "Fix, test again", "Agent, Neon", "A managed agent is patching the source and running the same test again"],
+];
+const LANES = [{ id: "a", sample: "vague", said: "your website is broken, please fix" }, { id: "b", sample: "clear", said: "my promo code doesnt work??" }];
+const state = {};
+
+$("lanes").innerHTML = LANES.map((l, i) => `
+  <section class="lane" id="lane-${l.id}">
+    <div class="claim">
+      <video id="vid-${l.id}" src="/sample/${l.sample}.webm" muted loop playsinline></video>
+      <div><div class="from">Report ${i ? "B" : "A"}: a screen recording, and one line from the user</div>
+        <div class="said" id="said-${l.id}">${esc(l.said)}</div>
+        <div class="own"><button data-act="rec" data-l="${l.id}">Record my own</button><input id="in-${l.id}" placeholder="What went wrong, in your words" aria-label="Your note" hidden></div></div>
+      <div class="clock" id="clock-${l.id}">0:00</div>
+    </div>
+    <ol class="rail">${CHECKS.map(([k, n, by]) => `<li data-k="${k}"><div class="what"><span class="lamp"></span>${n}</div><div class="by">${by}</div><div class="got"></div></li>`).join("")}</ol>
+    <div class="focus"><div class="now"><b id="now-${l.id}">Waiting to start</b></div><div class="pane" id="pane-${l.id}"><div class="idle">Press space to start both reports.</div></div></div>
+    <div class="verdict wait" id="verdict-${l.id}"><div class="v">No verdict yet</div><div class="w"></div></div>
+  </section>`).join("");
+LANES.forEach((l) => (state[l.id] = { blob: null, html: {} }));
+
+// only touch the DOM when something changed, so the transcript doesn't flicker
+function put(id, key, el, html) { const s = state[id]; if (s.html[key] === html) return false; s.html[key] = html; el.innerHTML = html; return true; }
+function rail(id, k, cls, got) {
+  const li = document.querySelector(`#lane-${id} .rail [data-k="${k}"]`);
+  li.className = cls; if (got !== undefined) put(id, "got-" + k, li.querySelector(".got"), got);
+}
+const tidy = (t) => t.replace(/\n{2,}/g, "\n").trim();
+const marks = (t) => esc(tidy(t)).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\*(.+?)\*/g, "$1").replace(/BUG_PRESENT/g, '<mark class="f">BUG_PRESENT</mark>').replace(/BUG_ABSENT/g, '<mark class="p">BUG_ABSENT</mark>');
+function transcript(lines, live) {
+  if (!lines || !lines.length) return '<div class="idle">Waiting for the model to start...</div>';
+  return lines.slice(-14).map((x, i, a) => `<div class="line ${x.kind}${live && i === a.length - 1 ? " live" : ""}">${marks(x.kind === "text" ? x.text.slice(-900) : x.text)}</div>`).join("");
+}
+function diffHtml(d) { return esc(d).split("\n").filter((x) => !/^(diff --git|index |--- |\+\+\+ )/.test(x)).map((x) => x[0] === "-" ? `<span class="del">${x}</span>` : x[0] === "+" ? `<span class="add">${x}</span>` : x).join("\n"); }
+const gateRows = (g) => `<div class="qs"><div class="qrow"><span>Could an engineer reproduce this from the text alone?</span><span class="track"><span class="fill" style="width:${g ? pct(g.reproducible) : "0"}"></span></span><span class="pc">${g ? pct(g.reproducible) : "..."}</span></div>
+  <div class="qrow"><span>Is there a concrete check a script could run?</span><span class="track"><span class="fill" style="width:${g ? pct(g.checkable) : "0"}"></span></span><span class="pc">${g ? pct(g.checkable) : "..."}</span></div>
+  ${g ? `<div class="qrow"><span>How severe is it?</span><span></span><span class="pc" style="grid-column:2/4">${esc(g.severity)}</span></div>` : ""}</div>`;
+
+function paint(id, job) {
+  const stage = job.stage || "", p = job.partial || {}, r = job.result, act = job.activity || {}, done = job.status === "done";
+  const rep = p.report || (r && r.report), g = p.gate || (r && r.gate), v = p.verdict || (r && r.verdict), fx = r && r.fix;
+  const cur = done ? -1 : stage.includes("Decision") ? 1 : stage.startsWith("fix") ? 3 : (stage.includes("reproducing") || stage.startsWith("agent")) ? 2 : 0;
+  const pane = $(`pane-${id}`), now = $(`now-${id}`);
+
+  // the rail: one line per finished check
+  rail(id, "watch", rep ? "done" : cur === 0 ? "on" : "", rep ? esc(rep.is_bug ? rep.title : "Not a bug: " + rep.title) : "");
+  rail(id, "gate", g ? "done" : cur === 1 ? "on" : "", g ? `reproducible ${pct(g.reproducible)}, checkable ${pct(g.checkable)}` : "");
+  if (v) rail(id, "run1", v.verdict === "reproduced" ? "fail" : v.verdict === "not_reproduced" ? "pass" : "done",
+    v.verdict === "reproduced" ? '<span class="res f">FAIL</span>the bug happens' : v.verdict === "not_reproduced" ? '<span class="res p">PASS</span>nothing goes wrong' : "could not run it");
+  else rail(id, "run1", cur === 2 ? "on" : done ? "off" : "", "");
+  if (fx) rail(id, "patch", fx.status === "fixed" ? "pass" : "done", fx.status === "fixed" ? '<span class="res p">PASS</span>same test, after the fix' : esc(fx.status.replace(/_/g, " ")));
+  else rail(id, "patch", cur === 3 ? "on" : done ? "off" : "", done ? '<span class="res n">not needed</span>' : "");
+
+  // the window: whichever model is working right now
+  if (cur === 1) { put(id, "now", now, esc(CHECKS[1][3])); put(id, "pane", pane, gateRows(null)); }
+  else if (cur === 2 && g && !(act.run1 || []).length) { put(id, "now", now, "Gemini Decision 1 answered in under a second"); put(id, "pane", pane, gateRows(g)); }
+  else if (cur >= 0) { put(id, "now", now, esc(CHECKS[cur][3])); put(id, "pane", pane, transcript(act[CHECKS[cur][0]], true)); }
+
+  // the end: a summary in the window and a verdict bar
+  const vb = $(`verdict-${id}`);
+  if (done) {
+    const f = r.final, fixed = fx && fx.status === "fixed", secs = Object.values(r.timings).reduce((a, b) => a + b, 0);
+    let cls, head, why, sum;
+    if (fixed) { cls = "fixed"; head = "Real bug. Fixed, and the fix is proven."; why = "The test failed on the live site, then passed on the patched code. Nothing is pushed until a person approves.";
+      const passes = (fx.runs_after.match(/BUG_ABSENT/g) || []).length;
+      sum = `<div><b>The claim:</b> ${esc(rep.title)}</div><div class="clamp"><b>The cause:</b> ${esc(fx.root_cause)}</div>${fx.diff ? `<pre>${diffHtml(fx.diff)}</pre>` : ""}
+        <div><b>After the fix:</b> ${passes ? `the same test passed ${passes} times in a row.` : esc(fx.runs_after)}</div>`; }
+    else if (f === "not_reproduced") { cls = "no"; head = "Not real. Claim dropped."; why = "The test passed on the live site, so there is nothing to fix.";
+      sum = `<div><b>The claim:</b> ${esc(rep.title)}</div><div><b>What the test saw:</b> ${esc(v.summary)}</div><div>The report was well written and wrong. No engineer hears about it.</div>`; }
+    else if (f === "reproduced") { cls = "yes"; head = "Real bug, reproduced."; why = "The test fails on the live site."; sum = `<div><b>The claim:</b> ${esc(rep.title)}</div><div>${esc(v.summary)}</div>`; }
+    else if (f === "not_a_bug") { cls = "no"; head = "Not a bug. Stopped early."; why = "No agent time was spent."; sum = `<div>${esc(rep.actual)}</div>`; }
+    else if (f === "needs_info") { cls = "no"; head = "Too vague. Sent back with a question."; why = "No agent time was spent."; sum = `<div>Missing: ${esc(g.missing.join(" and "))}</div>`; }
+    else { cls = "wait"; head = "Could not finish."; why = ""; sum = `<div>${esc(f)}</div>`; }
+    put(id, "now", now, "What happened"); pane.classList.add("end"); put(id, "pane", pane, `<div class="sum">${sum}</div>`);
+    vb.className = "verdict " + cls; put(id, "verdict", vb, `<div class="v">${head}</div><div class="w">${why}<br>Real time ${fmt(secs)}</div>`);
+  } else if (job.status === "error") { vb.className = "verdict wait"; put(id, "verdict", vb, `<div class="v">Something failed</div><div class="w">${esc(job.error)}</div>`); }
+}
+
+function reset(id) {
+  const s = state[id]; s.html = {};
+  CHECKS.forEach(([k]) => rail(id, k, "", ""));
+  $(`pane-${id}`).classList.remove("end");
+  $(`now-${id}`).textContent = "Starting"; $(`pane-${id}`).innerHTML = '<div class="idle">Uploading the recording...</div>';
+  const vb = $(`verdict-${id}`); vb.className = "verdict wait"; vb.innerHTML = '<div class="v">No verdict yet</div><div class="w"></div>';
+}
+
+// ---- live ----
+async function poll(id, jid) {
+  const t0 = Date.now(), s = state[id]; s.run = jid;
+  while (s.run === jid) {
+    const job = await (await fetch(`/api/jobs/${jid}`)).json();
+    paint(id, job); $(`clock-${id}`).textContent = fmt((Date.now() - t0) / 1000);
+    if (job.status !== "running") break;
+    await new Promise((r) => setTimeout(r, 700));
+  }
+}
+async function runLive(l) {
+  const s = state[l.id]; reset(l.id); $(`vid-${l.id}`).play().catch(() => {});
+  let jid;
+  if (s.blob) {
+    const fd = new FormData();
+    fd.append("video", s.blob, "bug.webm"); fd.append("url", SITE.url); fd.append("note", $(`in-${l.id}`).value);
+    fd.append("repo_url", SITE.repo_url); fd.append("subdir", SITE.subdir); fd.append("site_root", SITE.site_root);
+    jid = (await (await fetch("/api/jobs", { method: "POST", body: fd })).json()).id;
+    $(`said-${l.id}`).textContent = $(`in-${l.id}`).value || "(no note)";
+  } else jid = (await (await fetch(`/api/sample/${l.sample}`, { method: "POST" })).json()).id;
+  poll(l.id, jid);
+}
+
+// ---- replay of a recorded real run ----
+let mode = "replay", SPEED = 6;
+async function runReplay(l) {
+  const s = state[l.id], token = (s.run = "replay-" + Date.now()); reset(l.id);
+  const res = await fetch(`/api/replay/${l.sample}`);
+  if (!res.ok) { $(`pane-${l.id}`).innerHTML = '<div class="idle">No recorded run yet. Switch to Live and run it once.</div>'; return; }
+  const rec = await res.json(); $(`vid-${l.id}`).play().catch(() => {});
+  $("mode").textContent = `Replay of a real run from ${rec.recorded}, at ${SPEED}x`;
+  const start = performance.now(); let i = 0;
+  while (s.run === token) {
+    const t = (performance.now() - start) / 1000 * SPEED;
+    while (i < rec.frames.length && rec.frames[i].t <= t) i++;
+    if (i > 0) paint(l.id, rec.frames[i - 1].job);
+    $(`clock-${l.id}`).textContent = fmt(Math.min(t, rec.seconds));
+    if (i >= rec.frames.length) break;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+}
+function setMode(m) {
+  mode = m; $("m-replay").setAttribute("aria-pressed", m === "replay"); $("m-live").setAttribute("aria-pressed", m === "live");
+  $("mode").textContent = m === "live" ? "Live: the models run now, about 5 minutes" : `Replay of a real run, at ${SPEED}x`;
+}
+const start = () => LANES.forEach((l) => (mode === "live" ? runLive(l) : runReplay(l)));
+
+// ---- record your own ----
+async function record(l, btn) {
+  const s = state[l.id];
+  if (s.rec) { s.rec.stop(); return; }
+  let stream; try { stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 10 } }); } catch (e) { return; }
+  const chunks = []; s.rec = new MediaRecorder(stream, { mimeType: "video/webm" });
+  s.rec.ondataavailable = (e) => chunks.push(e.data);
+  s.rec.onstop = () => {
+    stream.getTracks().forEach((t) => t.stop()); s.rec = null; btn.textContent = "Record again";
+    s.blob = new Blob(chunks, { type: "video/webm" }); $(`vid-${l.id}`).src = URL.createObjectURL(s.blob);
+    $(`in-${l.id}`).hidden = false; $(`said-${l.id}`).textContent = "your recording"; setMode("live");
+  };
+  stream.getVideoTracks()[0].onended = () => s.rec && s.rec.stop();
+  s.rec.start(); btn.textContent = "Stop recording"; window.open(SITE.url, "_blank");
+}
+
+document.addEventListener("click", (e) => { const b = e.target.closest("[data-act]"); if (b) record(LANES.find((x) => x.id === b.dataset.l), b); });
+$("start").onclick = start; $("m-replay").onclick = () => setMode("replay"); $("m-live").onclick = () => setMode("live");
+document.addEventListener("keydown", (e) => {
+  if (e.target.matches("input,textarea")) return;
+  const k = e.key.toLowerCase();
+  if (k === " ") { e.preventDefault(); start(); } else if (k === "r") setMode("replay"); else if (k === "l") setMode("live");
+  else if (k === "p") document.body.classList.toggle("present");
+  else if (k === "f") (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => {});
+});
+setMode("replay");
+</script>
+</body>
+</html>

@@ -160,6 +160,11 @@ def sample_video(name: str):
 
 @app.get("/live")
 def live():
+    return FileResponse(ROOT / "web" / "stage.html")
+
+
+@app.get("/live-classic")
+def live_classic():
     return FileResponse(ROOT / "web" / "live.html")
 
 
