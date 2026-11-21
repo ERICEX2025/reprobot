@@ -12,3 +12,6 @@ data/diner_runs/
 data/diner/
 data/shots/diner_*
 eval/record_diner.py
+data/real/
+data/real_runs/
+data/shots/real_*

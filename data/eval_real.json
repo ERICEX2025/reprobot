@@ -1,0 +1,2263 @@
+{
+ "what": "ReproBot repo mode on real, already-fixed GitHub issues. Scores are hand-read, not automatic.",
+ "generated": "2026-11-21 15:39",
+ "deadline_s_per_case": 1200,
+ "summary": {
+  "attempted": 12,
+  "setup_failed": 0,
+  "watcher_understood_bug": 10,
+  "watcher_partly_understood_bug": 2,
+  "reproduced_claimed_by_pipeline": 7,
+  "reproduced_real_bug_after_review": 7,
+  "fixed_per_own_script": 6,
+  "fix_equivalent_to_maintainers": 4,
+  "fix_different_but_plausible": 1,
+  "fix_partial_same_change_but_incomplete": 1,
+  "fix_wrong_or_cosmetic": 0,
+  "fix_equivalent_or_as_good": 5,
+  "own_tests_available": 5,
+  "own_tests_reached_fix_step": 3,
+  "own_tests_still_passing_after_fix": 0,
+  "own_tests_inconclusive": 3,
+  "own_tests_regressed": 0,
+  "failed_at": {
+   "none": 6,
+   "gate": 0,
+   "setup": 0,
+   "reproduce": 5,
+   "fix": 1
+  },
+  "timeouts": 4,
+  "cases_with_possible_answer_lookup": 0,
+  "unscored": []
+ },
+ "notes": [
+  "Inputs per case: the reporter's video, the issue title, and operator configuration (repo, pre-fix SHA, install/start command, local URL, test command). The issue body, the fix PR and the fix were never given to the pipeline. The reviewer read them only afterwards, to score.",
+  "Limits: 20 minutes per case; inside that, 12 minutes for the reproduce step and the remainder for the fix step. Three cases (drawdb858, panels650, drawdb687) hit the 12-minute reproduce limit. They were re-run once with an 18-minute reproduce limit and a 30-minute case limit, reusing the same watcher report; those results are under extended_pass_not_counted and are NOT in the summary.",
+  "Own tests: the fix prompt caps each test run at 4 minutes. chogan's `node tools/test.js` did not finish inside that cap in the sandbox in any of the three chogan cases, so those are 'inconclusive', not 'passing'. Cypress/Playwright e2e suites (wavesurfer.js, sonner) and the large recharts root suite were not run at all.",
+  "datepicker5573 was run twice. The first run is void (operator config had no concrete port, so the watcher left start_url empty and the gate returned needs_info); it is kept as data/real_runs/_void_datepicker5573_no_url.json. The counted run used http://localhost:5173/.",
+  "Models were left as in the existing pipeline: Neon watches, Hydrogen drives the reproduce agent, Neon drives the fix agent. Nothing was re-run to get a better outcome; every case has exactly one counted run.",
+  "'fixed per own script' means the pipeline's own claim (its reproduction printed BUG_ABSENT after the patch). No independent verifier was run on these cases, unlike the planted-bug evaluation. The reviewer checked from the traces that the fix step edited only source files and not the reproduction scripts.",
+  "Leak scan: every command and tool call in the agent traces was searched for GitHub issue/PR/commit pages, the GitHub API, gh, extra git fetches, CDN or npm lookups of published versions, and web search. No hits in any counted or extended run. The clone had its remote removed after fetching the single pre-fix commit. This does not rule out the models knowing these public fixes from training (see sonner512).",
+  "Not attempted: fortune-sheet #500, excalidraw #8346 and the remaining candidates (time)."
+ ],
+ "cases": [
+  {
+   "id": "chogan595",
+   "repo": "choganhq/chogan",
+   "issue_url": "https://github.com/choganhq/chogan/issues/595",
+   "fix_url": "https://github.com/choganhq/chogan/pull/599",
+   "pre_fix_sha": "259ff1e5e25bfa0b7401c89e32112e64602c726c",
+   "symptom": "Snakes and Ladders: the token appears to skip the first square of every move",
+   "given": {
+    "note_title": "Token skips a house in Snakes and Ladders for both players",
+    "run": "python3 -m http.server -d www 8000",
+    "url": "http://localhost:8000/games/snakes/index.html",
+    "tests": "node tools/test.js"
+   },
+   "final_verdict": "reproduced",
+   "fix_status": "fixed",
+   "watcher_report": {
+    "is_bug": true,
+    "title": "Snakes and Ladders token skips the first square (S+1) during movement animation for both players",
+    "start_url": "http://localhost:8000/games/snakes/index.html",
+    "steps": [
+     {
+      "t": 0.0,
+      "action": "observe",
+      "target": "Snakes and Ladders board (2 players - Versus bots - Reach 100)",
+      "value": "Red player (\u067e\u0648\u06cc\u0627) is at square 50 and Blue player (Bot) is at square 14; status reads 'A six: roll again \u00b7 Your turn'"
+     },
+     {
+      "t": 0.5,
+      "action": "click",
+      "target": "Red roll die button (+)",
+      "value": ""
+     },
+     {
+      "t": 1.2,
+      "action": "observe",
+      "target": "Die result",
+      "value": "Rolls 4"
+     },
+     {
+      "t": 1.45,
+      "action": "observe",
+      "target": "Red token movement",
+      "value": "Jumps directly from 50 to 52 (skipping 51), then steps to 53 (1.60s) and 54 (1.70s); score updates to 54"
+     },
+     {
+      "t": 2.5,
+      "action": "wait",
+      "target": "Bot's turn",
+      "value": "Bot rolls automatically"
+     },
+     {
+      "t": 3.2,
+      "action": "observe",
+      "target": "Bot die result",
+      "value": "Rolls 2"
+     },
+     {
+      "t": 3.55,
+      "action": "observe",
+      "target": "Blue token movement",
+      "value": "Jumps directly from 14 to 16 in a single step (skipping 15); score updates to 16"
+     },
+     {
+      "t": 5.0,
+      "action": "click",
+      "target": "Red roll die button (+)",
+      "value": ""
+     },
+     {
+      "t": 5.6,
+      "action": "observe",
+      "target": "Die result",
+      "value": "Rolls 4"
+     },
+     {
+      "t": 5.85,
+      "action": "observe",
+      "target": "Red token movement",
+      "value": "Jumps directly from 54 to 56 (skipping 55), then steps to 57 (6.00s) and 58 (6.15s); score updates to 58"
+     },
+     {
+      "t": 7.0,
+      "action": "wait",
+      "target": "Bot's turn",
+      "value": "Bot rolls automatically"
+     },
+     {
+      "t": 7.7,
+      "action": "observe",
+      "target": "Bot die result",
+      "value": "Rolls 4"
+     },
+     {
+      "t": 8.0,
+      "action": "observe",
+      "target": "Blue token movement",
+      "value": "Jumps directly from 16 to 18 (skipping 17), then steps to 19 (8.10s) and 20 (8.20s); score updates to 20"
+     },
+     {
+      "t": 10.4,
+      "action": "click",
+      "target": "Red roll die button (+)",
+      "value": ""
+     },
+     {
+      "t": 11.05,
+      "action": "observe",
+      "target": "Die result",
+      "value": "Rolls 2"
+     },
+     {
+      "t": 11.3,
+      "action": "observe",
+      "target": "Red token movement",
+      "value": "Jumps directly from 58 to 60 in a single step (skipping 59); score updates to 60"
+     },
+     {
+      "t": 12.2,
+      "action": "wait",
+      "target": "Bot's turn",
+      "value": "Bot rolls automatically"
+     },
+     {
+      "t": 12.9,
+      "action": "observe",
+      "target": "Bot die result",
+      "value": "Rolls 4"
+     },
+     {
+      "t": 13.15,
+      "action": "observe",
+      "target": "Blue token movement",
+      "value": "Jumps directly from 20 to 22 (skipping 21), then steps to 23 (13.25s) and 24 (13.40s); score updates to 24"
+     }
+    ],
+    "expected": "When a player on square S rolls N, their token should animate sequentially through every square from S+1 to S+N (N discrete steps: S+1, S+2, ..., S+N).",
+    "actual": "For both the human player and the Bot, on every roll of N >= 2, the token jumps directly from S to S+2 on its first movement frame, completely skipping square S+1, and then steps one square at a time through S+N (taking only N-1 visual steps). This occurs both within a row and across row transitions, although the final resting square and header counter (S+N) are correct.",
+    "check": "After a player on square S rolls N >= 2, sampling the moving token's rendered board square on every animation frame until the move finishes shows that square S+1 is never visited and the first square rendered after S is S+2.",
+    "evidence": [
+     {
+      "t": 1.45,
+      "note": "Red player rolls 4 from square 50; token jumps from 50 directly to 52, skipping 51, before stepping to 53 and 54."
+     },
+     {
+      "t": 3.55,
+      "note": "Bot rolls 2 from square 14; blue token jumps from 14 directly to 16, skipping 15."
+     },
+     {
+      "t": 5.85,
+      "note": "Red player rolls 4 from square 54; token jumps from 54 directly to 56, skipping 55, before stepping to 57 and 58."
+     },
+     {
+      "t": 8.0,
+      "note": "Bot rolls 4 from square 16; blue token jumps from 16 directly to 18, skipping 17, before stepping to 19 and 20."
+     },
+     {
+      "t": 11.3,
+      "note": "Red player rolls 2 from square 58; token jumps from 58 directly to 60, skipping 59."
+     },
+     {
+      "t": 13.15,
+      "note": "Bot rolls 4 from square 20; blue token jumps from 20 directly to 22, skipping 21, before stepping to 23 and 24."
+     }
+    ]
+   },
+   "gate": {
+    "reproducible": 0.69,
+    "checkable": 0.95,
+    "severity": "cosmetic",
+    "severity_confidence": 0.74,
+    "missing": [],
+    "ready": true
+   },
+   "repro_summary": "Sampling the rendered <canvas class=\"sl-canvas\"> pixels on every requestAnimationFrame showed that for both the human player (red) and the Bot (blue), every roll of N >= 2 jumped directly from starting square S to S+2 on the first painted movement frame, completely skipping S+1 across all 3 runs.",
+   "repro_setup": "mkdir -p /workspace/src_chogan595 && cd /workspace/src_chogan595 && git init -q && git remote add origin https://github.com/choganhq/chogan.git && git fetch -q --depth 1 origin 259ff1e5e25bfa0b7401c89e32112e64602c726c && git checkout -q FETCH_HEAD && git remote remove origin\npip install --break-system-packages playwright -q\napt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y libatomic1\npython3 -m http.server -d www 8000 >/tmp/server.log 2>&1 </dev/null &",
+   "repro_script": "import sys\nimport time\nfrom playwright.sync_api import sync_playwright\n\nURL = \"http://localhost:8000/games/snakes/index.html\"\nSCREENSHOT_PATH = \"/workspace/repro_chogan595.png\"\n\n\ndef main():\n    with sync_playwright() as p:\n        browser = p.chromium.launch(\n            executable_path=\"/usr/bin/google-chrome\",\n            headless=True,\n        )\n        page = browser.new_page(viewport={\"width\": 1280, \"height\": 800})\n        page.goto(URL, wait_until=\"networkidle\")\n        page.wait_for_selector(\"canvas.sl-canvas\")\n\n        # Dismiss tutorial modal if present on first load\n        for _ in range(10):\n            scrim = page.locator(\".ch-scrim\")\n            if scrim.count() == 0 or not scrim.first.is_visible():\n                break\n            btn = scrim.locator(\"button\").last\n            if btn.count() > 0 and btn.is_visible():\n                btn.click()\n                page.wait_for_timeout(200)\n            else:\n                break\n\n        page.wait_for_selector(\"button.sl-die\")\n\n        # Install a rAF canvas pixel sampler to observe the actual rendered\n        # board square of Red (#E5484D) and Blue (#2F6FDE) tokens on every frame.\n        page.evaluate(\"\"\"() => {\n            window.__qaSampler = {\n                active: false,\n                frames: [],\n                readSquare(seatColor) {\n                    const cv = document.querySelector('canvas.sl-canvas');\n                    if (!cv || !cv.width || !cv.height) return null;\n                    const ctx = cv.getContext('2d');\n                    const w = cv.width, h = cv.height;\n                    const data = ctx.getImageData(0, 0, w, h).data;\n                    const [tr, tg, tb] = seatColor;\n                    let sx = 0, sy = 0, cnt = 0;\n                    const step = 2;\n                    for (let y = 0; y < h; y += step) {\n                        for (let x = 0; x < w; x += step) {\n                            const idx = (y * w + x) * 4;\n                            const r = data[idx], g = data[idx + 1], b = data[idx + 2];\n                            if (Math.abs(r - tr) <= 10 && Math.abs(g - tg) <= 10 && Math.abs(b - tb) <= 10) {\n                                sx += x;\n                                sy += y;\n                                cnt++;\n                            }\n                        }\n                    }\n                    if (cnt < 3) return null;\n                    const cx = sx / cnt;\n                    const cy = sy / cnt;\n                    const u = w / 10;\n                    const col = Math.max(0, Math.min(9, Math.floor(cx / u)));\n                    const row = Math.floor(cy / u);\n                    if (row >= 10) return 0;\n                    const r = 9 - row;\n                    const i = (r % 2 === 1) ? (9 - col) : col;\n                    return r * 10 + i + 1;\n                },\n                start() {\n                    this.frames = [];\n                    this.active = true;\n                    const loop = () => {\n                        if (!this.active) return;\n                        this.frames.push({\n                            t: performance.now(),\n                            red: this.readSquare([229, 72, 77]),\n                            blue: this.readSquare([47, 111, 222]),\n                        });\n                        requestAnimationFrame(loop);\n                    };\n                    requestAnimationFrame(loop);\n                },\n                stop() {\n                    this.active = false;\n                    return this.frames;\n                }\n            };\n        }\"\"\")\n\n        observed_rolls = []\n        bug_found = False\n\n        # Play up to 6 turns (human + bot turns) to observe rolls >= 2 for both players\n        for turn_idx in range(6):\n            # Determine whose turn it is by checking if die is enabled (Red/human) or disabled (Bot)\n            is_human_turn = page.evaluate(\"\"\"() => {\n                const die = document.querySelector('button.sl-die');\n                return die && !die.disabled;\n            }\"\"\")\n\n            seat_key = \"red\" if is_human_turn else \"blue\"\n            start_sq = page.evaluate(\n                \"(k) => window.__qaSampler.readSquare(k === 'red' ? [229, 72, 77] : [47, 111, 222])\",\n                seat_key,\n            )\n\n            # Start rAF sampling before the roll/move\n            page.evaluate(\"() => window.__qaSampler.start()\")\n\n            if is_human_turn:\n                page.click(\"button.sl-die\")\n\n            # Wait for die to land (die SVG shows >= 1 circle and stops spinning)\n            page.wait_for_function(\"\"\"() => {\n                const die = document.querySelector('button.sl-die');\n                if (!die) return false;\n                if (die.classList.contains('sl-die--roll')) return false;\n                return die.querySelectorAll('svg circle').length >= 1;\n            }\"\"\", timeout=5000)\n\n            roll_val = page.evaluate(\"() => document.querySelectorAll('button.sl-die svg circle').length\")\n\n            # Wait for the move and post-move turn transition to settle:\n            # Either die becomes enabled again (human's turn) or die resets to 0 circles (bot's next turn)\n            # or game finishes (.ch-modal appears).\n            page.wait_for_function(\"\"\"() => {\n                if (document.querySelector('.ch-scrim')) return true;\n                const die = document.querySelector('button.sl-die');\n                if (!die) return false;\n                return die.querySelectorAll('svg circle').length === 0;\n            }\"\"\", timeout=10000)\n\n            frames = page.evaluate(\"() => window.__qaSampler.stop()\")\n\n            # Compress consecutive identical squares into a sequence of visited squares\n            seq = []\n            for f in frames:\n                sq = f[seat_key]\n                if sq is not None and (not seq or seq[-1] != sq):\n                    seq.append(sq)\n\n            observed_rolls.append({\n                \"turn\": turn_idx,\n                \"player\": seat_key,\n                \"start\": start_sq,\n                \"roll\": roll_val,\n                \"visited_squares\": seq,\n            })\n\n            if roll_val >= 2 and start_sq is not None and start_sq + roll_val <= 100:\n                expected_first = start_sq + 1\n                if expected_first not in seq:\n                    # Confirm we jumped from start_sq directly to start_sq + 2\n                    after_start = [s for s in seq if s != start_sq]\n                    if after_start and after_start[0] == start_sq + 2:\n                        bug_found = True\n\n            # Stop early if we've seen the bug on both players, or after 6 turns\n            red_bug = any(\n                o[\"player\"] == \"red\" and o[\"roll\"] >= 2 and (o[\"start\"] + 1) not in o[\"visited_squares\"]\n                for o in observed_rolls if o[\"start\"] is not None\n            )\n            blue_bug = any(\n                o[\"player\"] == \"blue\" and o[\"roll\"] >= 2 and (o[\"start\"] + 1) not in o[\"visited_squares\"]\n                for o in observed_rolls if o[\"start\"] is not None\n            )\n            if red_bug and blue_bug:\n                break\n\n            if page.locator(\".ch-scrim\").count() > 0:\n                break\n\n        page.screenshot(path=SCREENSHOT_PATH)\n        for o in observed_rolls:\n            print(f\"Turn {o['turn']} ({o['player']}): start={o['start']}, roll={o['roll']}, visited={o['visited_squares']}\")\n\n        if bug_found:\n            print(\"BUG_PRESENT\")\n        else:\n            print(\"BUG_ABSENT\")\n\n        browser.close()\n\n\nif __name__ == \"__main__\":\n    main()\n",
+   "root_cause_claimed": "In www/games/snakes/index.html (lines 322-355, move()), anim is initialized at index i: 0, render() draws that square, and then next() is invoked synchronously on the very next line. On any roll >= 2, next() immediately increments anim.i from 0 to 1 and calls draw() before the browser can paint a frame or wait anim.pts[0].ms.",
+   "runs_before": "3 runs, all BUG_PRESENT (Run 1: Turn 2 roll=5 visited=[1, 3, 4, 5, 6], Turn 3 roll=6 visited=[1, 3, 4, 5, 6, 7]; Run 2: Turn 0 roll=4 visited=[0, 2, 3, 4, 17, 24, 25, 36, 45], Turn 1 roll=4 visited=[0, 2, 3, 4, 17, 24, 25, 36, 45]; Run 3: Turn 0 roll=4 visited=[0, 2, 3, 4, 17, 24, 25, 36, 45], Turn 1 roll=6 visited=[0, 2, 3, 4, 5, 6])",
+   "runs_after": "3 runs, all BUG_ABSENT (Run 1: 6 turns, all steps visited; Run 2: 6 turns, all steps visited; Run 3: 6 turns, all steps visited)",
+   "own_tests": {
+    "command": "node tools/test.js",
+    "note": null,
+    "before": "timed out after 4 minutes (exit code 124) during Gorillas (#466); all preceding sections including Snakes and Ladders passed with 0 failures",
+    "after": "timed out after 4 minutes (exit code 124) during Gorillas (#466); all preceding sections including Snakes and Ladders passed with 0 failures",
+    "before_output_tail": "\nJigsaw: a placed piece glides into its slot (#407)\n\nBreakout: brick shards, paddle squash, reduced motion (#407)\n\nBlock Drop: cleared rows flash, the rows above fall in, a hard drop thuds (#407)\n\nTower defence: a kill pops and its coins float up (#407)\n\nBattleship: a miss splashes, a hit bursts, a sinking shakes (#407)\n\nPool and snooker: a potted ball sinks into the pocket (#407)\n\nBowling: strike and spare pop, no replay with reduced motion (#407)\n\nKlondike (#415)\n\nCrazy Eights (#416)\n\nHaft Khabis: the Iranian rules by default (#449)\n\nGin Rummy (#417)\n\nSudoku: clear all notes, with undo (#424)\n\nCard games: one speed setting, Slow, Normal, Fast (#425)\n\nCards: a light edge in the dark theme (#485)\n\nAndroid: launcher shortcuts to games (#488)\n\nSudoku: the 3x3 boxes stand out in the dark theme (#519, #526)\n\nMenu: search games by name (#521)\n\nPool and Snooker: pull the cue stick; dragged cards on their own layer (#532)\n\nPool and Snooker: a fine \"turn\" aiming control (#492)\n\nPool and Snooker: the fine-aim buttons keep one slow step and sit together (#586)\n\nPool and Snooker: a turn speed setting behind the gear (#587)\n\nCards: Persian corner indices in Persian (#428)\n\nSpider (#460)\n\nPairs (#461)\n\nGorillas: a joystick control (#511)\n\nMenu: filter by how many people play on one phone (#561)\n\nWeb menu: an install bar the cross hides for good (#557)\n\nMenu: a floating, rounded bottom bar (#559)\n\nGorillas: a new match draws its own city (#552)\n\nGorillas (#466)\n",
+    "after_output_tail": "\nJigsaw: a placed piece glides into its slot (#407)\n\nBreakout: brick shards, paddle squash, reduced motion (#407)\n\nBlock Drop: cleared rows flash, the rows above fall in, a hard drop thuds (#407)\n\nTower defence: a kill pops and its coins float up (#407)\n\nBattleship: a miss splashes, a hit bursts, a sinking shakes (#407)\n\nPool and snooker: a potted ball sinks into the pocket (#407)\n\nBowling: strike and spare pop, no replay with reduced motion (#407)\n\nKlondike (#415)\n\nCrazy Eights (#416)\n\nHaft Khabis: the Iranian rules by default (#449)\n\nGin Rummy (#417)\n\nSudoku: clear all notes, with undo (#424)\n\nCard games: one speed setting, Slow, Normal, Fast (#425)\n\nCards: a light edge in the dark theme (#485)\n\nAndroid: launcher shortcuts to games (#488)\n\nSudoku: the 3x3 boxes stand out in the dark theme (#519, #526)\n\nMenu: search games by name (#521)\n\nPool and Snooker: pull the cue stick; dragged cards on their own layer (#532)\n\nPool and Snooker: a fine \"turn\" aiming control (#492)\n\nPool and Snooker: the fine-aim buttons keep one slow step and sit together (#586)\n\nPool and Snooker: a turn speed setting behind the gear (#587)\n\nCards: Persian corner indices in Persian (#428)\n\nSpider (#460)\n\nPairs (#461)\n\nGorillas: a joystick control (#511)\n\nMenu: filter by how many people play on one phone (#561)\n\nWeb menu: an install bar the cross hides for good (#557)\n\nMenu: a floating, rounded bottom bar (#559)\n\nGorillas: a new match draws its own city (#552)\n\nGorillas (#466)\n"
+   },
+   "diff": "diff --git a/www/games/snakes/index.html b/www/games/snakes/index.html\nindex 5dc61e0..2820de4 100644\n--- a/www/games/snakes/index.html\n+++ b/www/games/snakes/index.html\n@@ -320,8 +320,9 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SnakesEngi\n     G.phase = 'busy';\n     G.msg = '';\n     anim = { seat: who, pts: pathOf(r), i: 0, from: G.s };\n+    C.feedback('place');\n     render();\n-    (function next() {\n+    function next() {\n       if (!anim) return;\n       if (anim.i < anim.pts.length - 1) {\n         anim.i++;\n@@ -352,7 +353,8 @@ if (typeof module !== 'undefined' && module.exports) module.exports = SnakesEngi\n       G.roll = 0;\n       save();\n       later(startTurn, r.jump ? 650 : 250);\n-    })();\n+    }\n+    later(next, anim.pts[0].ms);\n   }\n \n   var LONGEST_LADDER = longest(E.LADDERS, 1), LONGEST_SNAKE = longest(E.SNAKES, -1);\n",
+   "diff_source": "file",
+   "timings_s": {
+    "upload": 3.2,
+    "watch": 77.3,
+    "gate": 0.2,
+    "reproduce": 188.5,
+    "fix": 675.1
+   },
+   "total_s": 945,
+   "tokens": {
+    "reproduce": 245869,
+    "fix": 294308
+   },
+   "leak_scan_hits": [],
+   "error": null,
+   "score": {
+    "setup": "ok",
+    "watcher_understood": true,
+    "reproduced": true,
+    "failure_stage": "none",
+    "fix_vs_maintainers": "equivalent",
+    "same_file": true,
+    "same_function": true,
+    "own_tests": "inconclusive",
+    "leak": false,
+    "comparison": "Same file and function (move() in www/games/snakes/index.html) and the same change as PR #599: stop calling next() synchronously, schedule it with later(next, anim.pts[0].ms), and add C.feedback('place') for the first square. Only placement of the feedback call differs (before render vs after).",
+    "what_went_wrong": "Nothing in the pipeline. The project's own test command did not finish inside the 4-minute cap in the sandbox, before or after the patch (stopped in the Gorillas section; the Snakes and Ladders section had passed both times), so 'own tests still pass' is unproven. The two 4-minute test runs are why the fix step took 11 minutes."
+   }
+  },
+  {
+   "id": "chogan506",
+   "repo": "choganhq/chogan",
+   "issue_url": "https://github.com/choganhq/chogan/issues/506",
+   "fix_url": "https://github.com/choganhq/chogan/pull/509",
+   "pre_fix_sha": "6461260ba78b9c03171c341068fec71aae59d60c",
+   "symptom": "Pool/Snooker: dragging the power bar left of where the press started adds power instead of staying at zero",
+   "given": {
+    "note_title": "[Bug] Power bar gains power when dragged below its starting point",
+    "run": "python3 -m http.server -d www 8000",
+    "url": "http://localhost:8000/games/eightball/index.html",
+    "tests": "node tools/test.js"
+   },
+   "final_verdict": "reproduced",
+   "fix_status": "fixed",
+   "watcher_report": {
+    "is_bug": true,
+    "title": "Power bar increases shot power when dragged backward past its starting point",
+    "start_url": "http://localhost:8000/games/eightball/index.html",
+    "steps": [
+     {
+      "t": 0.0,
+      "action": "navigate",
+      "target": "Eightball game page (mobile address bar shows truncated choganhq.github.io/chogangames/eightb) in an active game on player turn ('\u0646\u0648\u0628\u062a \u062a\u0648\u0633\u062a')",
+      "value": "http://localhost:8000/games/eightball/index.html"
+     },
+     {
+      "t": 0.7,
+      "action": "click",
+      "target": "Horizontal power bar labeled '\u0628\u06a9\u0634 \u0648 \u0631\u0647\u0627 \u06a9\u0646' at the bottom of the screen: press down about one-third from its left edge and drag rightward to the right end of the bar",
+      "value": ""
+     },
+     {
+      "t": 2.0,
+      "action": "observe",
+      "target": "Power bar and cue stick at maximum rightward drag",
+      "value": ""
+     },
+     {
+      "t": 2.3,
+      "action": "click",
+      "target": "Power bar (continuing drag without releasing): drag leftward back toward the initial press point",
+      "value": ""
+     },
+     {
+      "t": 2.8,
+      "action": "observe",
+      "target": "Power bar percentage dropping toward 0% near the initial press point ('\u0642\u062f\u0631\u062a \u06f1\u06f4\u066a')",
+      "value": ""
+     },
+     {
+      "t": 3.0,
+      "action": "click",
+      "target": "Power bar (continuing drag without releasing): drag further leftward past the initial press point to the left edge of the power bar",
+      "value": ""
+     },
+     {
+      "t": 3.3,
+      "action": "observe",
+      "target": "Power bar increases back up to '\u0642\u062f\u0631\u062a \u06f5\u06f0\u066a' (50%) and pulls the cue stick back despite dragging leftward past the starting point",
+      "value": ""
+     },
+     {
+      "t": 9.0,
+      "action": "click",
+      "target": "Power bar: drag back rightward to the initial press point until power reaches '\u0642\u062f\u0631\u062a \u06f0\u066a' (0%) at t=10.3, then release at t=11.3 to cancel the shot",
+      "value": ""
+     },
+     {
+      "t": 12.3,
+      "action": "click",
+      "target": "Power bar ('\u0628\u06a9\u0634 \u0648 \u0631\u0647\u0627 \u06a9\u0646'): press down again near left-center, drag rightward to '\u0642\u062f\u0631\u062a \u06f8\u06f7\u066a' (t=13.0), then drag leftward past the initial press point to the left edge of the bar",
+      "value": ""
+     },
+     {
+      "t": 15.0,
+      "action": "observe",
+      "target": "Power drops to '\u0642\u062f\u0631\u062a \u06f1\u06f0\u066a' near the starting point (t=14.0), then rises again as the touch continues leftward past the starting point, reaching '\u0642\u062f\u0631\u062a \u06f4\u06f8\u066a' (t=15.0) and '\u0642\u062f\u0631\u062a \u06f5\u06f1\u066a' (t=17.3)",
+      "value": ""
+     },
+     {
+      "t": 18.0,
+      "action": "click",
+      "target": "Power bar: slowly drag rightward back to the initial press point until power returns to '\u0642\u062f\u0631\u062a \u06f0\u066a' (t=20.3), then release at t=20.7",
+      "value": ""
+     }
+    ],
+    "expected": "When dragging the power bar backward (leftward on the horizontal bar) past the initial press starting point, the shot power should clamp at 0% and the cue stick should remain at rest so the player can reduce power to zero or cancel the shot without accidentally adding power.",
+    "actual": "When dragging backward (leftward) past the initial press starting point on the horizontal power bar, the shot power increases again instead of staying at 0% (behaving as if computed from the absolute distance from the starting point), filling the bar up to 50%-51% ('\u0642\u062f\u0631\u062a \u06f5\u06f0\u066a', '\u0642\u062f\u0631\u062a \u06f5\u06f1\u066a') at the left edge and pulling the cue stick back. Dragging back rightward to the exact starting point is required to reach '\u0642\u062f\u0631\u062a \u06f0\u066a' (0%).",
+    "check": "After triggering pointerdown near the horizontal center of the power bar and dragging leftward past the starting X coordinate to the left edge of the power bar (clientX < startX), the power bar displays a positive power percentage (> 0%) and non-zero fill width instead of clamping at 0%.",
+    "evidence": [
+     {
+      "t": 0.7,
+      "note": "Touch begins inside the horizontal power bar ('\u0628\u06a9\u0634 \u0648 \u0631\u0647\u0627 \u06a9\u0646') roughly one-third from its left edge."
+     },
+     {
+      "t": 2.0,
+      "note": "Dragging rightward reaches the right end of the bar; power bar displays '\u0642\u062f\u0631\u062a \u06f1\u06f0\u06f0\u066a' (100%) and cue stick is fully pulled back."
+     },
+     {
+      "t": 2.8,
+      "note": "Dragging leftward back near the initial press point lowers power to '\u0642\u062f\u0631\u062a \u06f1\u06f4\u066a' (after hitting '\u0642\u062f\u0631\u062a \u06f8\u066a' around t=2.7)."
+     },
+     {
+      "t": 3.3,
+      "note": "Continuing to drag leftward past the starting point to the left edge of the bar increases power back up to '\u0642\u062f\u0631\u062a \u06f5\u06f0\u066a' (50%) and pulls the cue stick back again."
+     },
+     {
+      "t": 10.3,
+      "note": "Returning the touch rightward to the original starting point brings power down to '\u0642\u062f\u0631\u062a \u06f0\u066a' (0%); releasing at t=11.3 resets the bar to '\u0628\u06a9\u0634 \u0648 \u0631\u0647\u0627 \u06a9\u0646' without shooting."
+     },
+     {
+      "t": 14.0,
+      "note": "During a second drag (started around t=12.3 and dragged right to '\u0642\u062f\u0631\u062a \u06f8\u06f7\u066a' at t=13.0), dragging leftward back near the starting point reduces power to '\u0642\u062f\u0631\u062a \u06f1\u06f0\u066a'."
+     },
+     {
+      "t": 17.3,
+      "note": "Dragging further leftward past the starting point to the left edge of the bar again raises power up to '\u0642\u062f\u0631\u062a \u06f5\u06f1\u066a' (51%) and pulls the cue stick back."
+     },
+     {
+      "t": 20.3,
+      "note": "Sliding rightward back to the starting point smoothly decreases power back to '\u0642\u062f\u0631\u062a \u06f0\u066a' (0%), and releasing at t=20.7 cancels the shot."
+     }
+    ]
+   },
+   "gate": {
+    "reproducible": 0.94,
+    "checkable": 0.96,
+    "severity": "minor",
+    "severity_confidence": 0.49,
+    "missing": [],
+    "ready": true
+   },
+   "repro_summary": "Pressing near the center of the `.eb-power` bar and dragging leftward past the starting X coordinate caused shot power to increase to 55% (`aria-valuenow=\"55\"`, `.eb-power__fill` width `121.0px`) instead of clamping at 0%. This happened in all 3 runs and matches `Math.abs(e.clientX - pdrag.x0)` in `www/games/eightball/index.html`.",
+   "repro_setup": "mkdir -p /workspace/src_chogan506 && cd /workspace/src_chogan506 && git init -q && git remote add origin https://github.com/choganhq/chogan.git && git fetch -q --depth 1 origin 6461260ba78b9c03171c341068fec71aae59d60c && git checkout -q FETCH_HEAD && git remote remove origin\npip install --break-system-packages playwright\napt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y libatomic1\npython3 -m http.server -d www 8000",
+   "repro_script": "from playwright.sync_api import sync_playwright\n\nURL = \"http://localhost:8000/games/eightball/index.html\"\nSCREENSHOT_PATH = \"/workspace/repro_chogan506.png\"\n\n\ndef main():\n    with sync_playwright() as p:\n        browser = p.chromium.launch(\n            executable_path=\"/usr/bin/google-chrome\",\n            headless=True,\n        )\n        context = browser.new_context(viewport={\"width\": 412, \"height\": 915})\n        page = context.new_page()\n        page.goto(URL, wait_until=\"networkidle\")\n\n        # Dismiss tutorial modal if shown on first visit\n        scrim = page.locator(\".ch-scrim\")\n        if scrim.count() > 0 and scrim.first.is_visible():\n            # Try clicking skip/close/done button inside the modal\n            close_btn = scrim.locator(\"button\").first\n            if close_btn.count() > 0:\n                close_btn.click()\n                page.wait_for_timeout(200)\n\n        # Ensure it's human turn and power bar is enabled\n        power_bar = page.locator(\".eb-power\")\n        power_bar.wait_for(state=\"visible\", timeout=5000)\n        page.wait_for_function(\n            \"() => document.querySelector('.eb-power')?.getAttribute('aria-disabled') === 'false'\",\n            timeout=5000,\n        )\n\n        box = power_bar.bounding_box()\n        assert box is not None, \"Power bar bounding box not found\"\n\n        # Step 1: Press down near horizontal center (or ~45% from left) of power bar\n        start_x = box[\"x\"] + box[\"width\"] * 0.45\n        start_y = box[\"y\"] + box[\"height\"] / 2.0\n        right_x = box[\"x\"] + box[\"width\"] - 2.0\n        left_x = box[\"x\"] + 2.0\n\n        page.mouse.move(start_x, start_y)\n        page.mouse.down()\n\n        # Step 2: Drag rightward to the right end of the bar\n        page.mouse.move(right_x, start_y, steps=10)\n        page.wait_for_timeout(100)\n        max_right_state = page.evaluate(\"\"\"() => {\n            const bar = document.querySelector('.eb-power');\n            const fill = document.querySelector('.eb-power__fill');\n            const label = document.querySelector('.eb-power__label');\n            return {\n                valuenow: Number(bar.getAttribute('aria-valuenow')),\n                fillWidth: fill.getBoundingClientRect().width,\n                label: label.textContent\n            };\n        }\"\"\")\n\n        # Step 3: Drag leftward back toward the initial press point\n        page.mouse.move(start_x + 4.0, start_y, steps=10)\n        page.wait_for_timeout(100)\n        near_start_state = page.evaluate(\"\"\"() => {\n            const bar = document.querySelector('.eb-power');\n            return Number(bar.getAttribute('aria-valuenow'));\n        }\"\"\")\n\n        # Step 4: Continue dragging leftward past the starting X coordinate to the left edge\n        page.mouse.move(left_x, start_y, steps=10)\n        page.wait_for_timeout(150)\n\n        left_edge_state = page.evaluate(\"\"\"() => {\n            const bar = document.querySelector('.eb-power');\n            const fill = document.querySelector('.eb-power__fill');\n            const label = document.querySelector('.eb-power__label');\n            return {\n                valuenow: Number(bar.getAttribute('aria-valuenow')),\n                fillWidth: fill.getBoundingClientRect().width,\n                styleWidth: fill.style.width,\n                label: label.textContent\n            };\n        }\"\"\")\n\n        # Save screenshot while dragged past start_x at left edge\n        page.screenshot(path=SCREENSHOT_PATH)\n\n        # Clean up pointer: move back to start_x (0%) and release\n        page.mouse.move(start_x, start_y, steps=5)\n        page.mouse.up()\n\n        print(\n            f\"max_right={max_right_state['valuenow']}% | \"\n            f\"near_start={near_start_state}% | \"\n            f\"left_edge={left_edge_state['valuenow']}% \"\n            f\"(fillWidth={left_edge_state['fillWidth']:.1f}px, label='{left_edge_state['label']}')\"\n        )\n\n        if left_edge_state[\"valuenow\"] > 0 and left_edge_state[\"fillWidth\"] > 0:\n            print(\"BUG_PRESENT\")\n        else:\n            print(\"BUG_ABSENT\")\n\n        browser.close()\n\n\nif __name__ == \"__main__\":\n    main()\n",
+   "root_cause_claimed": "In www/games/eightball/index.html, line 1131, the powerBar pointermove handler used Math.abs(e.clientX - pdrag.x0), which turned negative deltas from dragging leftward past the initial press point into positive power instead of clamping to 0. Removing Math.abs clamps leftward drags past pdrag.x0 to 0.",
+   "runs_before": "Run 1: max_right=68% | near_start=2% | left_edge=55% (fillWidth=121.0px, label='Power 55%') -> BUG_PRESENT; Run 2: max_right=68% | near_start=2% | left_edge=55% (fillWidth=121.0px, label='Power 55%') -> BUG_PRESENT; Run 3: max_right=68% | near_start=2% | left_edge=55% (fillWidth=121.0px, label='Power 55%') -> BUG_PRESENT",
+   "runs_after": "Run 1: max_right=68% | near_start=2% | left_edge=0% (fillWidth=0.0px, label='Pull and release') -> BUG_ABSENT; Run 2: max_right=68% | near_start=2% | left_edge=0% (fillWidth=0.0px, label='Pull and release') -> BUG_ABSENT; Run 3: max_right=68% | near_start=2% | left_edge=0% (fillWidth=0.0px, label='Pull and release') -> BUG_ABSENT",
+   "own_tests": {
+    "command": "node tools/test.js",
+    "note": null,
+    "before": "timed out after 4 minutes (exit code 124, stopped in Tanks (#476)); all Eightball / Pool & Snooker tests passed; 1 unrelated timing assertion failed",
+    "after": "timed out after 4 minutes (exit code 124, stopped in Tanks (#476)); all Eightball / Pool & Snooker tests passed; 2 unrelated CPU-timing assertions failed",
+    "before_output_tail": "\nMorris: pieces drop in and slide, a mill flashes, a taken piece fades (#407)\n\nDots and boxes: a chain fills box by box, in place (#407)\n\nBackgammon: checkers slide, a hit goes to the bar, dice tumble (#407)\n\nLudo: a captured token flies home, reaching home bursts (#407)\n\nNonogram: a fill pops in, a line that comes right flashes (#407)\n\nBridges: a wave runs over the islands on the win (#407)\n\nMastermind: the code turns over peg by peg (#407)\n\nSliding puzzle: a shimmer sweeps the solved tray (#407)\n\nJigsaw: a placed piece glides into its slot (#407)\n\nBreakout: brick shards, paddle squash, reduced motion (#407)\n\nBlock Drop: cleared rows flash, the rows above fall in, a hard drop thuds (#407)\n\nTower defence: a kill pops and its coins float up (#407)\n\nBattleship: a miss splashes, a hit bursts, a sinking shakes (#407)\n\nPool and snooker: a potted ball sinks into the pocket (#407)\n\nBowling: strike and spare pop, no replay with reduced motion (#407)\n\nKlondike (#415)\n\nCrazy Eights (#416)\n\nHaft Khabis: the Iranian rules by default (#449)\n\nGin Rummy (#417)\n\nSudoku: clear all notes, with undo (#424)\n\nCard games: one speed setting, Slow, Normal, Fast (#425)\n\nCards: a light edge in the dark theme (#485)\n\nAndroid: launcher shortcuts to games (#488)\n\nPool and Snooker: a fine \"turn\" aiming control (#492)\n\nCards: Persian corner indices in Persian (#428)\n\nSpider (#460)\n\nPairs (#461)\n\nGorillas (#466)\n\nHop (#467)\n\nTanks (#476)\n",
+    "after_output_tail": "\nMorris: pieces drop in and slide, a mill flashes, a taken piece fades (#407)\n\nDots and boxes: a chain fills box by box, in place (#407)\n\nBackgammon: checkers slide, a hit goes to the bar, dice tumble (#407)\n\nLudo: a captured token flies home, reaching home bursts (#407)\n\nNonogram: a fill pops in, a line that comes right flashes (#407)\n\nBridges: a wave runs over the islands on the win (#407)\n\nMastermind: the code turns over peg by peg (#407)\n\nSliding puzzle: a shimmer sweeps the solved tray (#407)\n\nJigsaw: a placed piece glides into its slot (#407)\n\nBreakout: brick shards, paddle squash, reduced motion (#407)\n\nBlock Drop: cleared rows flash, the rows above fall in, a hard drop thuds (#407)\n\nTower defence: a kill pops and its coins float up (#407)\n\nBattleship: a miss splashes, a hit bursts, a sinking shakes (#407)\n\nPool and snooker: a potted ball sinks into the pocket (#407)\n\nBowling: strike and spare pop, no replay with reduced motion (#407)\n\nKlondike (#415)\n\nCrazy Eights (#416)\n\nHaft Khabis: the Iranian rules by default (#449)\n\nGin Rummy (#417)\n\nSudoku: clear all notes, with undo (#424)\n\nCard games: one speed setting, Slow, Normal, Fast (#425)\n\nCards: a light edge in the dark theme (#485)\n\nAndroid: launcher shortcuts to games (#488)\n\nPool and Snooker: a fine \"turn\" aiming control (#492)\n\nCards: Persian corner indices in Persian (#428)\n\nSpider (#460)\n\nPairs (#461)\n\nGorillas (#466)\n\nHop (#467)\n\nTanks (#476)\n"
+   },
+   "diff": "diff --git a/www/games/eightball/index.html b/www/games/eightball/index.html\nindex 530e858..1c23a43 100644\n--- a/www/games/eightball/index.html\n+++ b/www/games/eightball/index.html\n@@ -1128,7 +1128,7 @@ if (typeof module !== 'undefined' && module.exports) module.exports = EightBallE\n   });\n   powerBar.addEventListener('pointermove', function (e) {\n     if (!pdrag || e.pointerId !== pdrag.id) return;\n-    power = Math.max(0, Math.min(1, Math.abs(e.clientX - pdrag.x0) / (pdrag.w * 0.8)));\n+    power = Math.max(0, Math.min(1, (e.clientX - pdrag.x0) / (pdrag.w * 0.8)));\n     drawPower(); draw();\n   });\n   function endPower(e) {\n",
+   "diff_source": "file",
+   "timings_s": {
+    "upload": 5.5,
+    "watch": 123.0,
+    "gate": 0.3,
+    "reproduce": 184.8,
+    "fix": 637.1
+   },
+   "total_s": 951,
+   "tokens": {
+    "reproduce": 289996,
+    "fix": 298208
+   },
+   "leak_scan_hits": [],
+   "error": null,
+   "score": {
+    "setup": "ok",
+    "watcher_understood": true,
+    "reproduced": true,
+    "failure_stage": "none",
+    "fix_vs_maintainers": "partial",
+    "same_file": true,
+    "same_function": true,
+    "own_tests": "inconclusive",
+    "leak": false,
+    "comparison": "Same line and same logic as PR #509 for the eightball page (drop Math.abs so a leftward drag clamps to 0). The maintainers moved the formula into Cue.barPower() in www/lib/cue.js and applied it to BOTH eightball and snooker; the agent patched only eightball, so the identical bug remains in www/games/snooker/index.html.",
+    "what_went_wrong": "Fix is correct for the page in the report but incomplete: the same line in the snooker page was not touched. The pipeline's own check cannot see that, because the reproduction only exercises eightball. Own tests timed out at the 4-minute cap before and after (the agent also noted 1 vs 2 CPU-timing assertion failures in unrelated sections, which looks like sandbox timing noise)."
+   }
+  },
+  {
+   "id": "drawdb858",
+   "repo": "drawdb-io/drawdb",
+   "issue_url": "https://github.com/drawdb-io/drawdb/issues/858",
+   "fix_url": "https://github.com/drawdb-io/drawdb/pull/943",
+   "pre_fix_sha": "6f807122927431ee359caa7e751317016e7fc6dc",
+   "symptom": "Settings > Table width: the new width is applied live while typing, even if the modal is closed without Confirm",
+   "given": {
+    "note_title": "[BUG] Table width modal applies the changes without user confirmation",
+    "run": "npm install && npm run dev -- --port 5173 --strictPort",
+    "url": "http://localhost:5173/editor",
+    "tests": null
+   },
+   "final_verdict": "timeout",
+   "fix_status": null,
+   "watcher_report": {
+    "is_bug": true,
+    "title": "Table width modal applies changes immediately on input and persists them when canceled or dismissed",
+    "start_url": "https://drawdb.app/editor",
+    "steps": [
+     {
+      "t": 0.0,
+      "action": "observe",
+      "target": "Diagram canvas (University schema)",
+      "value": ""
+     },
+     {
+      "t": 0.7,
+      "action": "click",
+      "target": "Settings menu in the top menu bar",
+      "value": ""
+     },
+     {
+      "t": 1.6,
+      "action": "click",
+      "target": "Table width item in the Settings dropdown",
+      "value": ""
+     },
+     {
+      "t": 3.5,
+      "action": "click",
+      "target": "Table width numeric input field (currently showing 280) and select all text",
+      "value": ""
+     },
+     {
+      "t": 5.3,
+      "action": "type",
+      "target": "Table width numeric input field",
+      "value": "560"
+     },
+     {
+      "t": 7.7,
+      "action": "click",
+      "target": "Cancel button in the Table width modal",
+      "value": ""
+     },
+     {
+      "t": 8.0,
+      "action": "observe",
+      "target": "Tables on the diagram canvas remain widened to 560 after closing the modal with Cancel",
+      "value": ""
+     },
+     {
+      "t": 10.7,
+      "action": "click",
+      "target": "Settings menu in the top menu bar",
+      "value": ""
+     },
+     {
+      "t": 11.7,
+      "action": "click",
+      "target": "Table width item in the Settings dropdown",
+      "value": ""
+     },
+     {
+      "t": 12.6,
+      "action": "observe",
+      "target": "Table width numeric input field displays 560 despite previously clicking Cancel",
+      "value": ""
+     },
+     {
+      "t": 14.3,
+      "action": "type",
+      "target": "Table width numeric input field (appending to 560)",
+      "value": "0"
+     },
+     {
+      "t": 15.6,
+      "action": "click",
+      "target": "Dark backdrop outside the Table width modal",
+      "value": ""
+     },
+     {
+      "t": 16.0,
+      "action": "observe",
+      "target": "Tables on the diagram canvas remain stretched to width 5600 after dismissing the modal without clicking Confirm",
+      "value": ""
+     }
+    ],
+    "expected": "Editing the value in the Table width modal should not apply the new width to the diagram tables until the user clicks Confirm. Clicking Cancel or clicking outside the modal should close it without modifying the table width, keeping it at 280.",
+    "actual": "Typing into the Table width modal input immediately resizes the tables on the canvas behind the modal without waiting for Confirm. Clicking Cancel (after typing 560) or clicking outside the modal backdrop (after changing the value to 5600) closes the modal without reverting the width, and the unconfirmed value persists when the modal is reopened.",
+    "check": "After opening Settings > Table width, changing the input value from 280 to 560, and clicking Cancel, the rendered width of table elements on the canvas is 560 (greater than the initial 280) instead of reverting to 280, and reopening Settings > Table width shows 560 in the input field.",
+    "evidence": [
+     {
+      "t": 2.0,
+      "note": "Table width modal opens with default value 280 and tables on the canvas are at width 280."
+     },
+     {
+      "t": 5.7,
+      "note": "While typing 560 in the Table width input and before clicking Confirm or Cancel, the tables behind the modal immediately widen to 560."
+     },
+     {
+      "t": 8.0,
+      "note": "Immediately after clicking Cancel, the modal closes but the tables (students, major, instructors, enrollment, departments) remain widened to 560."
+     },
+     {
+      "t": 12.0,
+      "note": "Reopening Settings > Table width shows 560 in the input field, confirming the canceled value persisted."
+     },
+     {
+      "t": 14.3,
+      "note": "Appending 0 to make 5600 immediately stretches the tables behind the modal across the canvas."
+     },
+     {
+      "t": 16.0,
+      "note": "Clicking outside the modal dismisses it, leaving the tables stretched to width 5600 without Confirm ever being clicked."
+     }
+    ]
+   },
+   "gate": {
+    "reproducible": 0.97,
+    "checkable": 0.98,
+    "severity": "minor",
+    "severity_confidence": 0.42,
+    "missing": [],
+    "ready": true
+   },
+   "repro_summary": "",
+   "repro_setup": "",
+   "repro_script": "",
+   "root_cause_claimed": null,
+   "runs_before": null,
+   "runs_after": null,
+   "own_tests": {
+    "command": null,
+    "note": "project has no tests",
+    "before": null,
+    "after": null,
+    "before_output_tail": null,
+    "after_output_tail": null
+   },
+   "diff": null,
+   "diff_source": null,
+   "timings_s": {
+    "upload": 5.1,
+    "watch": 53.2,
+    "gate": 0.2,
+    "reproduce": 729.6
+   },
+   "total_s": 789,
+   "tokens": {
+    "reproduce": 513417,
+    "fix": null
+   },
+   "leak_scan_hits": [],
+   "error": null,
+   "score": {
+    "setup": "ok",
+    "watcher_understood": true,
+    "reproduced": false,
+    "failure_stage": "reproduce",
+    "fix_vs_maintainers": null,
+    "own_tests": "not_available",
+    "leak": false,
+    "comparison": "No fix produced. Maintainers' fix (PR #943) holds the width in temporary modal state and commits on Confirm.",
+    "what_went_wrong": "Timeout in the reproduce step (720 s limit). Install and dev server were fine. The watcher's report was accurate, but the recording starts mid-session on a diagram with tables (the University template). A fresh local app first shows a 'Pick a database' modal and has an empty canvas, and the agent spent the whole budget trying to drive the semi-ui modals and menus to get tables on screen. Every command also restarted the dev server because background processes do not survive between tool calls. A second pass with an 18-minute reproduce limit (same report, fresh sandbox) also timed out at the same place, and hit a sandbox snapshot-upload error along the way, so this is not just a tight clock.",
+    "extended_review": "Still a timeout with an 18-minute reproduce limit (1086 s, 675k tokens). Same obstacle: getting past the 'Pick a database' modal and putting tables on the canvas. One command also failed on a sandbox snapshot-upload error."
+   }
+  },
+  {
+   "id": "wavesurfer3742",
+   "repo": "katspaugh/wavesurfer.js",
+   "issue_url": "https://github.com/katspaugh/wavesurfer.js/issues/3742",
+   "fix_url": "https://github.com/katspaugh/wavesurfer.js/pull/3743",
+   "pre_fix_sha": "9336f80034ac44b659e9c23adde89b07a686c1ff",
+   "symptom": "Timeline rendered in a separate container goes out of sync with the waveform after zoom()",
+   "given": {
+    "note_title": "TimelinePlugin not properly rerendered after zooming if not contained in Wavesurfer wrapper",
+    "run": "npm install --legacy-peer-deps && npm run build && python3 -m http.server 9090",
+    "url": "http://localhost:9090/#timeline.js",
+    "tests": null
+   },
+   "final_verdict": "not_reproduced",
+   "fix_status": null,
+   "watcher_report": {
+    "is_bug": true,
+    "title": "TimelinePlugin does not rerender or rescale when zooming the waveform",
+    "start_url": "http://localhost:9090/#timeline.js",
+    "steps": [
+     {
+      "t": 0,
+      "action": "navigate",
+      "target": "Timeline example page with waveform, external timeline bar above it, and zoom slider at bottom right",
+      "value": "http://localhost:9090/#timeline.js"
+     },
+     {
+      "t": 0.5,
+      "action": "click",
+      "target": "zoom slider thumb next to the <-> icon at bottom right and drag it all the way to the left to zoom out",
+      "value": ""
+     },
+     {
+      "t": 3,
+      "action": "observe",
+      "target": "timeline ruler above the waveform while zoomed out",
+      "value": ""
+     },
+     {
+      "t": 3.5,
+      "action": "click",
+      "target": "zoom slider thumb next to the <-> icon at bottom right and drag it to the right past its initial position to zoom in",
+      "value": ""
+     },
+     {
+      "t": 5.5,
+      "action": "observe",
+      "target": "timeline ruler above the waveform while zoomed in",
+      "value": ""
+     },
+     {
+      "t": 6,
+      "action": "click",
+      "target": "zoom slider thumb next to the <-> icon at bottom right and drag it back to the left to zoom out again, then release",
+      "value": ""
+     },
+     {
+      "t": 7,
+      "action": "observe",
+      "target": "timeline ruler above the waveform after releasing the zoom slider",
+      "value": ""
+     }
+    ],
+    "expected": "When dragging the zoom slider to zoom out or zoom in, the timeline ruler above the waveform should rerender and rescale its width, tick marks, and time labels to stay synchronized with the zoomed waveform.",
+    "actual": "Dragging the zoom slider left and right rescales the waveform horizontally, but the timeline above the waveform does not rerender at all. Its tick marks and time labels stay frozen from 0:00 to 4:15 in 5-second increments regardless of zoom level, making the timeline misaligned with the waveform.",
+    "check": "After changing the zoom slider value so the waveform rescales horizontally, the timeline container's scrollWidth and rendered time-label text/positions remain identical to their pre-zoom values (still showing 0:00 to 4:15 at 5-second intervals) instead of matching the updated waveform wrapper width.",
+    "evidence": [
+     {
+      "t": 0,
+      "note": "Initial state shows the timeline labeled 0:00 to 4:15 in 5-second intervals, the first loud waveform section starting under 2:45, and the zoom slider thumb near the middle."
+     },
+     {
+      "t": 3,
+      "note": "With the zoom slider dragged to the far left, the waveform is compressed horizontally so the first loud section shifts under 0:40, but the timeline ruler still shows 0:00 to 4:15 unchanged."
+     },
+     {
+      "t": 5.5,
+      "note": "With the zoom slider dragged to the right of center, the waveform is expanded horizontally so only the initial quiet portion fills the view, yet the timeline ruler still shows 0:00 to 4:15 unchanged."
+     },
+     {
+      "t": 7,
+      "note": "After dragging the zoom slider back to the left and releasing it, the waveform rescales again (first loud section near 1:35) while the timeline remains frozen at 0:00 to 4:15."
+     }
+    ]
+   },
+   "gate": {
+    "reproducible": 0.95,
+    "checkable": 0.91,
+    "severity": "major",
+    "severity_confidence": 0.69,
+    "missing": [],
+    "ready": true
+   },
+   "repro_summary": "Dragging the zoom slider on http://localhost:9090/#timeline.js rerendered and rescaled the timeline container and its time labels to match the waveform wrapper width across all zoom levels. In all 3 runs, tlWrapperScrollWidth matched wrapperScrollWidth and BUG_ABSENT was printed.",
+   "repro_setup": "mkdir -p /workspace/src_wavesurfer3742 && cd /workspace/src_wavesurfer3742 && git init -q && git remote add origin https://github.com/katspaugh/wavesurfer.js.git && git fetch -q --depth 1 origin 9336f80034ac44b659e9c23adde89b07a686c1ff && git checkout -q FETCH_HEAD && git remote remove origin\nnpm install --legacy-peer-deps && npm run build\npip install --break-system-packages playwright\napt-get update -qq && apt-get install -y libatomic1\npython3 -m http.server 9090 >/tmp/http.log 2>&1 </dev/null &",
+   "repro_script": "from playwright.sync_api import sync_playwright\n\n\ndef get_timeline_state(page):\n    return page.evaluate(\"\"\"() => {\n        const iframe = document.querySelector('#preview');\n        const doc = iframe && iframe.contentDocument;\n        if (!doc) return null;\n        const slider = doc.querySelector('input[type=\"range\"]');\n        const wf = doc.querySelector('#waveform');\n        const sr = wf && wf.firstElementChild && wf.firstElementChild.shadowRoot;\n        if (!sr) return null;\n        const wrapper = sr.querySelector('[part=\"wrapper\"]');\n        const tlWrapper = sr.querySelector('[part=\"timeline-wrapper\"]');\n        const tl = sr.querySelector('[part=\"timeline\"]');\n        const notches = Array.from(sr.querySelectorAll('[part~=\"timeline-notch\"]')).map(n => ({\n            left: n.style.left,\n            text: n.textContent || ''\n        }));\n        const labels = notches.filter(n => n.text.trim() !== '');\n        return {\n            sliderValue: slider ? slider.value : null,\n            wrapperScrollWidth: wrapper ? wrapper.scrollWidth : null,\n            tlWrapperScrollWidth: tlWrapper ? tlWrapper.scrollWidth : null,\n            tlScrollWidth: tl ? tl.scrollWidth : null,\n            notchCount: notches.length,\n            labels: labels,\n        };\n    }\"\"\")\n\n\ndef drag_slider(page, box, start_ratio, end_ratio):\n    y = box[\"y\"] + box[\"height\"] / 2\n    start_x = box[\"x\"] + max(2, min(box[\"width\"] - 2, box[\"width\"] * start_ratio))\n    end_x = box[\"x\"] + max(2, min(box[\"width\"] - 2, box[\"width\"] * end_ratio))\n    page.mouse.move(start_x, y)\n    page.mouse.down()\n    page.mouse.move(end_x, y, steps=10)\n    page.mouse.up()\n\n\ndef main():\n    with sync_playwright() as p:\n        browser = p.chromium.launch(executable_path=\"/usr/bin/google-chrome\", headless=True)\n        page = browser.new_page(viewport={\"width\": 1280, \"height\": 800})\n        page.goto(\"http://localhost:9090/#timeline.js\", wait_until=\"networkidle\")\n\n        frame = page.frame_locator(\"#preview\")\n        slider = frame.locator('input[type=\"range\"]')\n        slider.wait_for(state=\"visible\", timeout=15000)\n\n        # Wait until waveform & timeline notches are rendered\n        page.wait_for_function(\"\"\"() => {\n            const iframe = document.querySelector('#preview');\n            const doc = iframe && iframe.contentDocument;\n            const wf = doc && doc.querySelector('#waveform');\n            const sr = wf && wf.firstElementChild && wf.firstElementChild.shadowRoot;\n            const tl = sr && sr.querySelector('[part=\"timeline\"]');\n            return tl && tl.children.length > 0;\n        }\"\"\", timeout=15000)\n        page.wait_for_timeout(500)\n\n        initial = get_timeline_state(page)\n        box = slider.bounding_box()\n        assert box is not None, \"Zoom slider bounding box not found\"\n\n        # Step 2: Drag zoom slider thumb all the way to the left to zoom out\n        initial_ratio = (float(initial[\"sliderValue\"]) - 10.0) / (1000.0 - 10.0)\n        drag_slider(page, box, initial_ratio, 0.0)\n        page.wait_for_timeout(500)\n        zoomed_out = get_timeline_state(page)\n\n        # Step 4: Drag zoom slider thumb to the right past its initial position to zoom in\n        drag_slider(page, box, 0.0, 0.75)\n        page.wait_for_timeout(500)\n        zoomed_in = get_timeline_state(page)\n\n        # Step 6: Drag zoom slider thumb back to the left to zoom out again, then release\n        drag_slider(page, box, 0.75, 0.15)\n        page.wait_for_timeout(500)\n        zoomed_out_again = get_timeline_state(page)\n\n        page.screenshot(path=\"/workspace/repro_wavesurfer3742.png\")\n\n        # Evaluate the report's check:\n        # Bug is present if waveform wrapper rescaled horizontally, while timeline container's\n        # scrollWidth and rendered time-label text/positions remained identical to pre-zoom values\n        # instead of matching the updated waveform wrapper width.\n        waveform_rescaled = (\n            zoomed_out[\"wrapperScrollWidth\"] != initial[\"wrapperScrollWidth\"]\n            and zoomed_in[\"wrapperScrollWidth\"] != initial[\"wrapperScrollWidth\"]\n        )\n        timeline_frozen_width = (\n            zoomed_out[\"tlWrapperScrollWidth\"] == initial[\"tlWrapperScrollWidth\"]\n            and zoomed_in[\"tlWrapperScrollWidth\"] == initial[\"tlWrapperScrollWidth\"]\n        )\n        timeline_frozen_labels = (\n            zoomed_out[\"labels\"] == initial[\"labels\"]\n            and zoomed_in[\"labels\"] == initial[\"labels\"]\n        )\n        timeline_matches_wrapper = (\n            zoomed_out[\"tlWrapperScrollWidth\"] == zoomed_out[\"wrapperScrollWidth\"]\n            and zoomed_in[\"tlWrapperScrollWidth\"] == zoomed_in[\"wrapperScrollWidth\"]\n            and zoomed_out_again[\"tlWrapperScrollWidth\"] == zoomed_out_again[\"wrapperScrollWidth\"]\n        )\n\n        print(\"initial:\", initial)\n        print(\"zoomed_out:\", zoomed_out)\n        print(\"zoomed_in:\", zoomed_in)\n        print(\"zoomed_out_again:\", zoomed_out_again)\n\n        if waveform_rescaled and (timeline_frozen_width or timeline_frozen_labels) and not timeline_matches_wrapper:\n            print(\"BUG_PRESENT\")\n        else:\n            print(\"BUG_ABSENT\")\n\n        browser.close()\n\n\nif __name__ == \"__main__\":\n    main()\n",
+   "root_cause_claimed": null,
+   "runs_before": null,
+   "runs_after": null,
+   "own_tests": {
+    "command": null,
+    "note": "only Cypress e2e (heavy), not run",
+    "before": null,
+    "after": null,
+    "before_output_tail": null,
+    "after_output_tail": null
+   },
+   "diff": null,
+   "diff_source": null,
+   "timings_s": {
+    "upload": 3.0,
+    "watch": 46.0,
+    "gate": 0.3,
+    "reproduce": 368.8
+   },
+   "total_s": 419,
+   "tokens": {
+    "reproduce": 216838,
+    "fix": null
+   },
+   "leak_scan_hits": [],
+   "error": null,
+   "score": {
+    "setup": "ok",
+    "watcher_understood": "partly",
+    "reproduced": false,
+    "failure_stage": "reproduce",
+    "fix_vs_maintainers": null,
+    "own_tests": "not_available",
+    "leak": false,
+    "comparison": "No fix attempted. Maintainers' fix (PR #3743) is one line in initTimeline(): take pxPerSec from the waveform wrapper's scrollWidth when the timeline lives in its own container.",
+    "what_went_wrong": "Not reproduced (BUG_ABSENT 3/3), and that verdict is true for what was tested. The bug only happens when the timeline is given its own `container`. The issue title says so ('if not contained in Wavesurfer wrapper'), but the watcher's report dropped that condition and described only 'timeline does not rescale on zoom'. The stock timeline example at this commit renders the timeline inside the waveform, where it works. The video cannot show which option the reporter's code used; the snippet is in the issue body, which the pipeline was deliberately not given."
+   }
+  },
+  {
+   "id": "wavesurfer2963",
+   "repo": "katspaugh/wavesurfer.js",
+   "issue_url": "https://github.com/katspaugh/wavesurfer.js/issues/2963",
+   "fix_url": "https://github.com/katspaugh/wavesurfer.js/pull/2984",
+   "pre_fix_sha": "05ceddd6e6346448a0a6569d65c8bf49c09b99b4",
+   "symptom": "After a right-click on the waveform, the playback cursor follows every mouse move",
+   "given": {
+    "note_title": "After right-clicking, the playback section follows whenever the mouse pointer is moved.",
+    "run": "npm install --legacy-peer-deps && npm run build && python3 -m http.server 9090",
+    "url": "http://localhost:9090/#basic.js",
+    "tests": null
+   },
+   "final_verdict": "not_reproduced",
+   "fix_status": null,
+   "watcher_report": {
+    "is_bug": true,
+    "title": "Right-clicking the waveform causes the playback position to follow mouse pointer movement after closing the context menu",
+    "start_url": "http://localhost:9090/#basic.js",
+    "steps": [
+     {
+      "t": 0.0,
+      "action": "navigate",
+      "target": "wavesurfer.js basic example page",
+      "value": "http://localhost:9090/#basic.js"
+     },
+     {
+      "t": 1.8,
+      "action": "click",
+      "target": "audio waveform around 20% from the left edge",
+      "value": ""
+     },
+     {
+      "t": 3.2,
+      "action": "click",
+      "target": "audio waveform around 35% from the left edge (right-click to open context menu)",
+      "value": ""
+     },
+     {
+      "t": 4.2,
+      "action": "click",
+      "target": "area just below the waveform to dismiss the context menu",
+      "value": ""
+     },
+     {
+      "t": 4.8,
+      "action": "click",
+      "target": "audio waveform near the left edge (around 4% from the left)",
+      "value": ""
+     },
+     {
+      "t": 6.2,
+      "action": "click",
+      "target": "audio waveform near the middle around 48% from the left edge (right-click to open context menu)",
+      "value": ""
+     },
+     {
+      "t": 7.1,
+      "action": "click",
+      "target": "audio waveform just to the left of the context menu to dismiss it",
+      "value": ""
+     },
+     {
+      "t": 7.5,
+      "action": "observe",
+      "target": "audio waveform playhead and dark purple progress section while moving the mouse pointer horizontally across and above the waveform without pressing any mouse button",
+      "value": ""
+     }
+    ],
+    "expected": "Right-clicking the waveform and dismissing the browser context menu should not trigger a scrub/drag state; moving the mouse pointer without holding a mouse button should not move the playback progress section or playhead.",
+    "actual": "After right-clicking the waveform and dismissing the context menu, the waveform stays stuck in a dragging state so that moving the mouse pointer horizontally across or even above the waveform without pressing any mouse button continuously drags the vertical playhead and dark purple playback progress section to follow the pointer.",
+    "check": "After right-clicking on the waveform and dismissing the context menu, moving the mouse pointer horizontally across the waveform with no mouse button pressed causes the waveform progress element width and playhead horizontal position to change to track the pointer X coordinate.",
+    "evidence": [
+     {
+      "t": 1.8,
+      "note": "Left-clicking at ~20% on the waveform moves the playhead and dark purple progress section to ~20% and playback advances normally."
+     },
+     {
+      "t": 3.2,
+      "note": "Right-clicking on the waveform at ~35% opens the browser context menu."
+     },
+     {
+      "t": 4.7,
+      "note": "After dismissing the first context menu at 4.2s, moving the pointer left pulls the playhead leftward from ~28% to ~24% and then ~4% at 4.8s."
+     },
+     {
+      "t": 6.2,
+      "note": "Right-clicking near the center of the waveform (~48%) opens the browser context menu again while the playhead is at ~10%."
+     },
+     {
+      "t": 7.2,
+      "note": "The context menu fades out and closes while the playhead is at ~13%."
+     },
+     {
+      "t": 7.6,
+      "note": "Without pressing a mouse button, moving the pointer right across the waveform drags the playhead and dark purple progress section to ~67%."
+     },
+     {
+      "t": 8.5,
+      "note": "Moving the pointer back and forth across the waveform causes the playhead and progress section to continuously scrub left and right following the cursor (~25% at 8.5s, ~65% at 8.9s, ~48% at 9.7s)."
+     },
+     {
+      "t": 10.1,
+      "note": "Moving the pointer above the waveform to ~81% horizontally at 10.0s causes the playhead and dark purple progress section to jump to ~81% aligned with the pointer."
+     }
+    ]
+   },
+   "gate": {
+    "reproducible": 0.93,
+    "checkable": 0.95,
+    "severity": "major",
+    "severity_confidence": 0.57,
+    "missing": [],
+    "ready": true
+   },
+   "repro_summary": "In headless Chrome, right-clicking the waveform and then left-clicking to dismiss did not leave the waveform stuck in a dragging state. Moving the mouse pointer horizontally across (75%, 15%) and above (81%) the waveform without pressing any mouse button did not cause the .progress width or .cursor position to follow the pointer; instead, playback progressed monotonically from ~20%.",
+   "repro_setup": "mkdir -p /workspace/src_wavesurfer2963 && cd /workspace/src_wavesurfer2963 && git init -q && git remote add origin https://github.com/katspaugh/wavesurfer.js.git && git fetch -q --depth 1 origin 05ceddd6e6346448a0a6569d65c8bf49c09b99b4 && git checkout -q FETCH_HEAD && git remote remove origin\nnpm install --legacy-peer-deps && npm run build\npip install --break-system-packages playwright\napt-get update -qq && apt-get install -y libatomic1\npython3 -m http.server 9090 >/tmp/http_server.log 2>&1 </dev/null &\npython3 /workspace/repro_wavesurfer2963.py\npython3 /workspace/repro_wavesurfer2963.py\npython3 /workspace/repro_wavesurfer2963.py --screenshot",
+   "repro_script": "import sys\nimport time\nfrom playwright.sync_api import sync_playwright\n\nURL = \"http://localhost:9090/#basic.js\"\nSCREENSHOT_PATH = \"/workspace/repro_wavesurfer2963.png\"\n\n\ndef get_waveform_metrics(page):\n    \"\"\"Return bounding box of .wrapper and current progress/cursor percentages from inside iframe#preview.\"\"\"\n    return page.evaluate(\"\"\"() => {\n        const iframe = document.querySelector('iframe#preview');\n        if (!iframe || !iframe.contentDocument) return null;\n        const doc = iframe.contentDocument;\n        const iframeRect = iframe.getBoundingClientRect();\n        // Find shadow host inside iframe body\n        const hosts = Array.from(doc.body.children).filter(el => el.shadowRoot);\n        if (hosts.length === 0) return null;\n        const shadow = hosts[0].shadowRoot;\n        const wrapper = shadow.querySelector('.wrapper');\n        const progress = shadow.querySelector('.progress');\n        const cursor = shadow.querySelector('.cursor');\n        if (!wrapper || !progress || !cursor) return null;\n        const rect = wrapper.getBoundingClientRect();\n        const canvas = shadow.querySelector('canvas');\n        if (!canvas || rect.width === 0 || rect.height === 0) return null;\n        return {\n            x: iframeRect.left + rect.left,\n            y: iframeRect.top + rect.top,\n            width: rect.width,\n            height: rect.height,\n            progressWidth: progress.style.width,\n            cursorLeft: cursor.style.left,\n            progressPct: parseFloat(progress.style.width) || 0,\n            cursorPct: parseFloat(cursor.style.left) || 0,\n        };\n    }\"\"\")\n\n\ndef main():\n    save_screenshot = \"--screenshot\" in sys.argv\n\n    with sync_playwright() as p:\n        browser = p.chromium.launch(\n            executable_path=\"/usr/bin/google-chrome\",\n            headless=True,\n        )\n        context = browser.new_context(viewport={\"width\": 1280, \"height\": 800})\n        page = context.new_page()\n\n        page.goto(URL, wait_until=\"networkidle\")\n\n        # Wait for waveform to render inside iframe#preview\n        metrics = None\n        for _ in range(50):\n            metrics = get_waveform_metrics(page)\n            if metrics and metrics[\"width\"] > 100:\n                break\n            time.sleep(0.1)\n\n        if not metrics:\n            print(\"BUG_ABSENT (waveform failed to render)\")\n            if save_screenshot:\n                page.screenshot(path=SCREENSHOT_PATH)\n            browser.close()\n            return\n\n        wx = metrics[\"x\"]\n        wy = metrics[\"y\"]\n        ww = metrics[\"width\"]\n        wh = metrics[\"height\"]\n        mid_y = wy + wh / 2\n\n        # Step 1 (t=1.8s): Left-click audio waveform around 20% from the left edge\n        page.mouse.click(wx + ww * 0.20, mid_y, button=\"left\")\n        time.sleep(0.5)\n\n        # Step 2 (t=3.2s): Right-click audio waveform around 35% from the left edge\n        page.mouse.click(wx + ww * 0.35, mid_y, button=\"right\")\n        time.sleep(0.5)\n\n        # Step 3 (t=4.2s): Click area just below the waveform to dismiss the context menu\n        page.mouse.click(wx + ww * 0.35, wy + wh + 30, button=\"left\")\n        time.sleep(0.3)\n\n        # Step 4 (t=4.8s): Left-click audio waveform near the left edge (~4%)\n        page.mouse.click(wx + ww * 0.04, mid_y, button=\"left\")\n        time.sleep(0.5)\n\n        # Step 5 (t=6.2s): Right-click audio waveform near the middle (~48%)\n        page.mouse.click(wx + ww * 0.48, mid_y, button=\"right\")\n        time.sleep(0.5)\n\n        # Step 6 (t=7.1s): Click audio waveform just to the left of the context menu to dismiss it\n        page.mouse.click(wx + ww * 0.20, mid_y, button=\"left\")\n        time.sleep(0.3)\n\n        # Step 7 (t=7.5s+): Move mouse pointer horizontally across and above the waveform without pressing any button\n        # Test multiple horizontal positions: 75%, 15%, and 81% above the waveform\n        page.mouse.move(wx + ww * 0.75, mid_y, steps=10)\n        time.sleep(0.15)\n        m_75 = get_waveform_metrics(page)\n\n        page.mouse.move(wx + ww * 0.15, mid_y, steps=10)\n        time.sleep(0.15)\n        m_15 = get_waveform_metrics(page)\n\n        page.mouse.move(wx + ww * 0.81, wy - 20, steps=10)\n        time.sleep(0.15)\n        m_81 = get_waveform_metrics(page)\n\n        if save_screenshot:\n            page.screenshot(path=SCREENSHOT_PATH)\n\n        # Check: moving the mouse pointer horizontally with no button pressed causes\n        # progress element width and playhead horizontal position to track the pointer X coordinate.\n        # Specifically: when pointer moved to 75%, progress jumped near ~75%;\n        # when moved back left to 15%, progress jumped back left near ~15% (normal playback cannot go backwards!);\n        # when moved to 81% above waveform, progress jumped near ~81%.\n        tracked_75 = abs(m_75[\"progressPct\"] - 75.0) < 10.0 and abs(m_75[\"cursorPct\"] - 75.0) < 10.0\n        tracked_15 = abs(m_15[\"progressPct\"] - 15.0) < 10.0 and abs(m_15[\"cursorPct\"] - 15.0) < 10.0\n        tracked_81 = abs(m_81[\"progressPct\"] - 81.0) < 10.0 and abs(m_81[\"cursorPct\"] - 81.0) < 10.0\n\n        print(\n            f\"Observed after hover moves: \"\n            f\"75%->(progress={m_75['progressWidth']}, cursor={m_75['cursorLeft']}), \"\n            f\"15%->(progress={m_15['progressWidth']}, cursor={m_15['cursorLeft']}), \"\n            f\"81%->(progress={m_81['progressWidth']}, cursor={m_81['cursorLeft']})\"\n        )\n\n        if tracked_75 and tracked_15 and tracked_81:\n            print(\"BUG_PRESENT\")\n        else:\n            print(\"BUG_ABSENT\")\n\n        browser.close()\n\n\nif __name__ == \"__main__\":\n    main()\n",
+   "root_cause_claimed": null,
+   "runs_before": null,
+   "runs_after": null,
+   "own_tests": {
+    "command": null,
+    "note": "only Cypress e2e (heavy), not run",
+    "before": null,
+    "after": null,
+    "before_output_tail": null,
+    "after_output_tail": null
+   },
+   "diff": null,
+   "diff_source": null,
+   "timings_s": {
+    "upload": 6.3,
+    "watch": 111.5,
+    "gate": 0.3,
+    "reproduce": 328.8
+   },
+   "total_s": 448,
+   "tokens": {
+    "reproduce": 233542,
+    "fix": null
+   },
+   "leak_scan_hits": [],
+   "error": null,
+   "score": {
+    "setup": "ok",
+    "watcher_understood": true,
+    "reproduced": false,
+    "failure_stage": "reproduce",
+    "fix_vs_maintainers": null,
+    "own_tests": "not_available",
+    "leak": false,
+    "comparison": "No fix attempted. Maintainers' fix (PR #2984) is 3 lines in src/draggable.ts: ignore pointerdown from the right mouse button.",
+    "what_went_wrong": "Not reproduced (BUG_ABSENT 3/3) although the bug is in the code at this commit. The watcher's report was right. In a real browser the native context menu swallows the pointerup after a right-click, which leaves the drag handler armed. Playwright's page.mouse.click(button='right') in headless Chrome sends a clean down+up pair and no native menu appears, so the stuck state never occurs. The agent followed the steps literally and did not think to send a right-button pointerdown with no matching pointerup. A false negative caused by browser-automation fidelity."
+   }
+  },
+  {
+   "id": "panels650",
+   "repo": "bvaughn/react-resizable-panels",
+   "issue_url": "https://github.com/bvaughn/react-resizable-panels/issues/650",
+   "fix_url": "https://github.com/bvaughn/react-resizable-panels/pull/651",
+   "pre_fix_sha": "87e361a1ba9d88e9f81e9a0445bd3f07b505b7ac",
+   "symptom": "Separator jumps when dragging next to a collapsible panel (regression in 4.5.7)",
+   "given": {
+    "note_title": "Separator jumping for collapsible panels",
+    "run": "pnpm install && pnpm dev --port 5173",
+    "url": "http://localhost:5173/",
+    "tests": "pnpm test:ci"
+   },
+   "final_verdict": "timeout",
+   "fix_status": null,
+   "watcher_report": {
+    "is_bug": true,
+    "title": "Collapsible panel separator jumps ahead of cursor and skips intermediate sizes when dragging right from minSize or collapsedSize",
+    "start_url": "http://localhost:5173/",
+    "steps": [
+     {
+      "t": 0,
+      "action": "observe",
+      "target": "Examples / Collapsible panels page",
+      "value": ""
+     },
+     {
+      "t": 2.5,
+      "action": "click",
+      "target": "Separator of the first collapsible panel group (<Panel collapsible minSize={100} />, left panel initially at 100px) and drag right",
+      "value": ""
+     },
+     {
+      "t": 3.2,
+      "action": "observe",
+      "target": "First collapsible panel group left panel and separator while dragging right past ~150px",
+      "value": ""
+     },
+     {
+      "t": 4.4,
+      "action": "observe",
+      "target": "First collapsible panel group left panel and separator while moving cursor slightly left and right across ~150px (4.4s to 7.3s) and then continuing right to 623px (until mouse release at 11.3s); separator remains offset ahead of cursor",
+      "value": ""
+     },
+     {
+      "t": 14.2,
+      "action": "click",
+      "target": "Separator of the second collapsible panel group (<Panel collapsible collapsedSize={35} minSize={100} />, left panel initially at 414px) and drag left",
+      "value": ""
+     },
+     {
+      "t": 17.8,
+      "action": "observe",
+      "target": "Second collapsible panel group left panel resizing smoothly down to 100px (16.8s) and collapsing to 35px (17.8s), then mouse released at 17.9s",
+      "value": ""
+     },
+     {
+      "t": 18.3,
+      "action": "click",
+      "target": "Separator of the second collapsible panel group at collapsed 35px position and drag right",
+      "value": ""
+     },
+     {
+      "t": 19.2,
+      "action": "observe",
+      "target": "Second collapsible panel group left panel staying stuck at 35px past 100px and then jumping directly to ~260px ahead of cursor, continuing to ~563px with separator offset right of cursor until release at 23.2s",
+      "value": ""
+     },
+     {
+      "t": 23.4,
+      "action": "click",
+      "target": "Separator of the second collapsible panel group at ~563px, drag right to ~626px, then drag left to 424px and release at 26.4s",
+      "value": ""
+     }
+    ],
+    "expected": "When dragging a collapsible panel's separator to the right from its minSize (100px) or from its collapsedSize (35px), the panel should resize smoothly once above minSize and the separator should stay aligned with the mouse cursor without jumping ahead or skipping intermediate widths.",
+    "actual": "When dragging the separator to the right from a collapsible panel at minSize (100px) in the first example, the panel stays stuck at 100px until the cursor moves ~50px right, then abruptly jumps directly from 100px to 200px (skipping all intermediate widths) and oscillates directly between 100px and 200px when crossing that point. Similarly, in the second example (collapsedSize={35}, minSize={100}), dragging right from the collapsed 35px state keeps the panel stuck at 35px well past 100px before abruptly jumping directly to ~260px. In both cases, continuing to drag right leaves the separator persistently offset to the right of the cursor until the mouse is released.",
+    "check": "After dragging the separator of the first collapsible panel group (minSize={100}, starting at 100px) 60px to the right, the left panel width jumps to at least 200px (more than 30px ahead of the pointer) instead of resizing smoothly to approximately 160px.",
+    "evidence": [
+     {
+      "t": 3.1,
+      "note": "First example left panel remains stuck at 100px even though the cursor has dragged ~50px right of the separator."
+     },
+     {
+      "t": 3.2,
+      "note": "First example left panel abruptly jumps from 100px directly to 200px, placing the separator ahead of the cursor."
+     },
+     {
+      "t": 4.4,
+      "note": "Moving the cursor slightly left snaps the first example left panel directly back from 200px to 100px; repeated back-and-forth movement between 5.0s and 6.8s continues snapping between 100px and 200px."
+     },
+     {
+      "t": 10.0,
+      "note": "While continuing to drag right in the first example (530px), the separator remains visibly offset to the right of the mouse cursor."
+     },
+     {
+      "t": 19.1,
+      "note": "Second example left panel stays stuck at collapsed 35px even after dragging the cursor well past 100px (to ~200px)."
+     },
+     {
+      "t": 19.2,
+      "note": "Second example left panel abruptly jumps from 35px directly to ~260px, leaving the separator offset to the right of the cursor through 23.1s."
+     }
+    ]
+   },
+   "gate": {
+    "reproducible": 0.79,
+    "checkable": 0.96,
+    "severity": "major",
+    "severity_confidence": 0.53,
+    "missing": [],
+    "ready": true
+   },
+   "repro_summary": "",
+   "repro_setup": "",
+   "repro_script": "",
+   "root_cause_claimed": null,
+   "runs_before": null,
+   "runs_after": null,
+   "own_tests": {
+    "command": "pnpm test:ci",
+    "note": null,
+    "before": null,
+    "after": null,
+    "before_output_tail": null,
+    "after_output_tail": null
+   },
+   "diff": null,
+   "diff_source": null,
+   "timings_s": {
+    "upload": 5.8,
+    "watch": 187.2,
+    "gate": 0.5,
+    "reproduce": 728.5
+   },
+   "total_s": 924,
+   "tokens": {
+    "reproduce": 326678,
+    "fix": null
+   },
+   "leak_scan_hits": [],
+   "error": null,
+   "score": {
+    "setup": "ok",
+    "watcher_understood": true,
+    "reproduced": false,
+    "failure_stage": "reproduce",
+    "fix_vs_maintainers": null,
+    "own_tests": "not_reached",
+    "leak": false,
+    "comparison": "No fix produced. Maintainers' fix (PR #651) comments out the collapsible-panel branch added in #635 and skips 5 of the project's own unit tests.",
+    "what_went_wrong": "Timeout in the reproduce step (720 s limit). The watcher took 187 s and wrote a precise report (which docs example, drag distances, the 100 px to 200 px jump). pnpm install and the Vite docs site started fine. The agent then lost its time finding and navigating to the 'Collapsible panels' example (the nav links are not anchors) and restarting the dev server for every attempt.",
+    "extended_review": "With the longer limit it reproduced in 751 s (31 s past the first-pass limit) and then fixed in 551 s. Fix is in the same file and function as PR #651 (adjustLayoutByDelta.ts, the collapsible branch added in #635) but a different approach: the maintainers commented the whole branch out and skipped 5 of their own tests; the agent kept the branch and only runs it when the panel starts collapsed. The project's own suite passed before and after (29 files, 382 tests), including the 5 tests the maintainers had to skip. Plausible and arguably less destructive, but the reproduction checks only the first of the two examples in the recording (the jump from minSize), not the collapsedSize example, so the second symptom is unverified."
+   }
+  },
+  {
+   "id": "wavesurfer3494",
+   "repo": "katspaugh/wavesurfer.js",
+   "issue_url": "https://github.com/katspaugh/wavesurfer.js/issues/3494",
+   "fix_url": "https://github.com/katspaugh/wavesurfer.js/pull/3496",
+   "pre_fix_sha": "104af0e942562d636622909d8eec16abb5a90b0c",
+   "symptom": "Dragging a region edge while zoomed in on part of the region makes the view jump and render wildly",
+   "given": {
+    "note_title": "Adjusting region size while zoomed on part of region cause major render issues",
+    "run": "npm install --legacy-peer-deps && npm run build && python3 -m http.server 9090",
+    "url": "http://localhost:9090/#regions.js",
+    "tests": null
+   },
+   "final_verdict": "reproduced",
+   "fix_status": "fixed",
+   "watcher_report": {
+    "is_bug": true,
+    "title": "Resizing a region while zoomed in and scrolled partway through it causes blank/smeared waveform rendering, scroll jump, and region over-expansion",
+    "start_url": "https://wavesurfer.xyz/examples/?regions.js",
+    "steps": [
+     {
+      "t": 0.0,
+      "action": "navigate",
+      "target": "wavesurfer.js Regions example page",
+      "value": "https://wavesurfer.xyz/examples/?regions.js"
+     },
+     {
+      "t": 0.8,
+      "action": "navigate",
+      "target": "reload current page",
+      "value": "https://wavesurfer.xyz/examples/?regions.js"
+     },
+     {
+      "t": 1.5,
+      "action": "wait",
+      "target": "waveform and regions ('Resize me', 'Cramped region', 'Drag me') to finish rendering",
+      "value": ""
+     },
+     {
+      "t": 2.0,
+      "action": "click",
+      "target": "'Zoom:' range slider (dragged right to approximately 75% of the slider track)",
+      "value": ""
+     },
+     {
+      "t": 3.0,
+      "action": "scroll",
+      "target": "waveform container (horizontally right so the start of 'Resize me' scrolls off-screen left and its right edge plus 'Cramped region' come into view)",
+      "value": ""
+     },
+     {
+      "t": 5.5,
+      "action": "scroll",
+      "target": "waveform container (horizontally slightly left so the right edge of the green 'Resize me' region sits near 40% of the viewport width)",
+      "value": ""
+     },
+     {
+      "t": 7.0,
+      "action": "click",
+      "target": "right resize handle of the green 'Resize me' region (press and drag horizontally to the right by roughly 10-15% of the viewport width until 8.5s, then release)",
+      "value": ""
+     },
+     {
+      "t": 7.8,
+      "action": "observe",
+      "target": "waveform viewport during the resize drag",
+      "value": ""
+     },
+     {
+      "t": 8.7,
+      "action": "observe",
+      "target": "waveform horizontal scroll position immediately upon releasing the resize handle",
+      "value": ""
+     },
+     {
+      "t": 9.5,
+      "action": "scroll",
+      "target": "waveform container (horizontally right to approximately 40-55% along the scrollbar track)",
+      "value": ""
+     },
+     {
+      "t": 10.2,
+      "action": "observe",
+      "target": "waveform canvas and green 'Resize me' region",
+      "value": ""
+     }
+    ],
+    "expected": "Dragging the right resize handle of the 'Resize me' region ~10-15% of the viewport width to the right while zoomed in and scrolled partway through the region should smoothly extend only the right edge of that region by the dragged distance, keep the waveform and region cleanly rendered throughout the drag, preserve the current scroll position upon release, and leave subsequent regions ('Cramped region', 'Drag me') and crisp waveform peaks intact.",
+    "actual": "During the drag (7.8s-8.3s), the left ~35% of the waveform viewport abruptly turns completely blank/black with both the waveform and green region missing before flickering back at 8.5s. Upon releasing the resize handle (8.7s), the waveform viewport immediately jumps all the way back to the far left (showing the 'Resize me' label at scrollLeft 0). Scrolling right again (9.75s-12.0s) shows the green 'Resize me' region massively over-expanded across 100% of the viewport even past the scroll position where 'Cramped region' previously appeared (which is no longer visible), and the waveform renders as a blurry, smeared vertical green-and-magenta band instead of crisp peaks.",
+    "check": "After setting the 'Zoom' slider to ~75%, scrolling the waveform right until the start of the 'Resize me' region is off-screen left and its right edge is near 40% of the viewport, and dragging that right handle ~80px to the right, the left ~35% of the visible waveform viewport renders completely blank (solid background pixels) during the drag and, upon release, the waveform scroll container resets scrollLeft to 0 while the 'Resize me' region extends far past the dragged drop point into the scroll range previously occupied by 'Cramped region'.",
+    "evidence": [
+     {
+      "t": 1.5,
+      "note": "Initial zoomed-out waveform loads with green 'Resize me', pink 'Cramped region', and yellow 'Drag me' regions clearly visible."
+     },
+     {
+      "t": 2.5,
+      "note": "User drags the 'Zoom:' slider to ~75%; the green 'Resize me' region now spans wider than the visible waveform container."
+     },
+     {
+      "t": 5.5,
+      "note": "Scrolled right (scrollbar thumb ~28-45%): the right edge of green 'Resize me' ends near the left of the viewport (~12%), crisp magenta peaks fill the middle, and 'Cramped region' appears on the far right."
+     },
+     {
+      "t": 7.8,
+      "note": "While dragging the right resize handle of 'Resize me' to the right, the left ~35% of the waveform viewport suddenly goes completely blank/black (both waveform and green region disappear) until flickering back at 8.5s."
+     },
+     {
+      "t": 8.7,
+      "note": "Upon releasing the resize handle, the horizontal scrollbar thumb jumps all the way back to the far left (0%), displaying the 'Resize me' label."
+     },
+     {
+      "t": 10.2,
+      "note": "After scrolling right again (scrollbar thumb ~38-55%, further right than at 5.5s), the green 'Resize me' region still covers 100% of the viewport, 'Cramped region' is absent, and the waveform appears as a blurry/smeared vertical wash instead of crisp peaks."
+     }
+    ]
+   },
+   "gate": {
+    "reproducible": 0.9,
+    "checkable": 0.93,
+    "severity": "major",
+    "severity_confidence": 0.76,
+    "missing": [],
+    "ready": true
+   },
+   "repro_summary": "All 3 runs reproduced the bug (BUG_PRESENT): after zooming to ~75% and scrolling right to scrollLeft = 6083.0, dragging the right resize handle of 'Resize me' 80px to the right caused scrollLeft to ping-pong between 0 and ~5769-5822 during drag and jump back to 0.0 upon release.",
+   "repro_setup": "mkdir -p /workspace/src_wavesurfer3494 && cd /workspace/src_wavesurfer3494 && git init -q && git remote add origin https://github.com/katspaugh/wavesurfer.js.git && git fetch -q --depth 1 origin 104af0e942562d636622909d8eec16abb5a90b0c && git checkout -q FETCH_HEAD && git remote remove origin\nnpm install --legacy-peer-deps && npm run build\npip install --break-system-packages playwright\nDEBIAN_FRONTEND=noninteractive apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y libatomic1\npython3 -m http.server 9090 >/tmp/http_server.log 2>&1 </dev/null &",
+   "repro_script": "import sys\nimport time\nfrom playwright.sync_api import sync_playwright\n\nURL = \"http://localhost:9090/#regions.js\"\nSCREENSHOT_PATH = \"/workspace/repro_wavesurfer3494.png\"\n\n\ndef main():\n    save_screenshot = \"--screenshot\" in sys.argv\n\n    with sync_playwright() as p:\n        browser = p.chromium.launch(\n            executable_path=\"/usr/bin/google-chrome\",\n            headless=True,\n            args=[\"--no-sandbox\", \"--disable-dev-shm-usage\"],\n        )\n        context = browser.new_context(viewport={\"width\": 1280, \"height\": 800})\n        page = context.new_page()\n\n        # Step 1: Navigate to regions example\n        page.goto(URL, wait_until=\"networkidle\")\n        # Step 2: Reload as in report\n        page.reload(wait_until=\"networkidle\")\n\n        # Wait for #preview iframe and wavesurfer inside it\n        iframe_el = page.wait_for_selector(\"#preview\", timeout=15000)\n        frame = iframe_el.content_frame()\n        assert frame is not None, \"Could not get #preview content_frame\"\n\n        # Step 3: Wait for waveform and regions ('Resize me', 'Cramped region', 'Drag me')\n        frame.wait_for_function(\n            \"\"\"() => {\n                const wf = document.querySelector('#waveform');\n                if (!wf || !wf.firstElementChild || !wf.firstElementChild.shadowRoot) return false;\n                const shadow = wf.firstElementChild.shadowRoot;\n                const canvases = shadow.querySelectorAll('.canvases canvas');\n                if (canvases.length === 0) return false;\n                const regions = Array.from(shadow.querySelectorAll('[part~=\"region\"]'));\n                const texts = regions.map(r => r.textContent || '');\n                return texts.some(t => t.includes('Resize me'))\n                    && texts.some(t => t.includes('Cramped region'))\n                    && texts.some(t => t.includes('Drag me'));\n            }\"\"\",\n            timeout=20000,\n        )\n        time.sleep(0.5)\n\n        # Step 4: Drag 'Zoom:' range slider to ~75% of the slider track\n        slider = frame.locator('input[type=\"range\"]')\n        slider_box = slider.bounding_box()\n        assert slider_box is not None, \"Zoom slider bounding box not found\"\n        target_x = slider_box[\"x\"] + slider_box[\"width\"] * 0.75\n        target_y = slider_box[\"y\"] + slider_box[\"height\"] / 2\n        page.mouse.click(target_x, target_y)\n        time.sleep(0.6)\n\n        # Locate 'Resize me' and compute scroll position so its start is off-screen left\n        # and its right edge sits near 40% of the viewport (scroll container) width.\n        scroll_info = frame.evaluate(\n            \"\"\"() => {\n                const shadow = document.querySelector('#waveform').firstElementChild.shadowRoot;\n                const scroll = shadow.querySelector('.scroll');\n                const regions = Array.from(shadow.querySelectorAll('[part~=\"region\"]'));\n                const resizeMe = regions.find(r => (r.textContent || '').includes('Resize me'));\n                const sRect = scroll.getBoundingClientRect();\n                const rRect = resizeMe.getBoundingClientRect();\n                return {\n                    scrollWidth: scroll.scrollWidth,\n                    clientWidth: scroll.clientWidth,\n                    resizeMeRightRel: rRect.right - sRect.left,\n                };\n            }\"\"\"\n        )\n\n        # Step 5 & 6: Scroll horizontally right so start of 'Resize me' is off-screen left\n        # and its right edge sits near 40% of the scroll container width.\n        desired_right_pos = scroll_info[\"clientWidth\"] * 0.40\n        target_scroll_left = max(0, scroll_info[\"resizeMeRightRel\"] - desired_right_pos)\n\n        frame.evaluate(\n            \"\"\"(sl) => {\n                const shadow = document.querySelector('#waveform').firstElementChild.shadowRoot;\n                const scroll = shadow.querySelector('.scroll');\n                scroll.scrollLeft = sl;\n            }\"\"\",\n            target_scroll_left,\n        )\n        time.sleep(0.4)\n\n        before_drag = frame.evaluate(\n            \"\"\"() => {\n                const shadow = document.querySelector('#waveform').firstElementChild.shadowRoot;\n                const scroll = shadow.querySelector('.scroll');\n                const regions = Array.from(shadow.querySelectorAll('[part~=\"region\"]'));\n                const resizeMe = regions.find(r => (r.textContent || '').includes('Resize me'));\n                const handle = resizeMe.querySelector('[part*=\"region-handle-right\"]');\n                const rRect = resizeMe.getBoundingClientRect();\n                const hRect = handle.getBoundingClientRect();\n                return {\n                    scrollLeft: scroll.scrollLeft,\n                    scrollWidth: scroll.scrollWidth,\n                    clientWidth: scroll.clientWidth,\n                    resizeMeWidth: rRect.width,\n                    handleCenterX: hRect.left + hRect.width / 2,\n                    handleCenterY: hRect.top + hRect.height / 2,\n                };\n            }\"\"\"\n        )\n\n        # Get iframe offset in page coordinates for page.mouse\n        iframe_box = iframe_el.bounding_box()\n        assert iframe_box is not None\n        start_x = iframe_box[\"x\"] + before_drag[\"handleCenterX\"]\n        start_y = iframe_box[\"y\"] + before_drag[\"handleCenterY\"]\n        drag_dx = 80  # ~80px to the right as in check\n\n        # Step 7: Press and drag right resize handle ~80px to the right\n        page.mouse.move(start_x, start_y)\n        page.mouse.down()\n\n        scroll_positions_during_drag = []\n        steps = 9\n        for i in range(1, steps + 1):\n            cur_x = start_x + (drag_dx * i / steps)\n            page.mouse.move(cur_x, start_y)\n            time.sleep(0.08)\n            sl = frame.evaluate(\n                \"() => document.querySelector('#waveform').firstElementChild.shadowRoot.querySelector('.scroll').scrollLeft\"\n            )\n            scroll_positions_during_drag.append(sl)\n\n        # Release\n        page.mouse.up()\n        time.sleep(0.3)\n\n        # Step 9: Observe scrollLeft and region bounds upon releasing\n        after_release = frame.evaluate(\n            \"\"\"() => {\n                const shadow = document.querySelector('#waveform').firstElementChild.shadowRoot;\n                const scroll = shadow.querySelector('.scroll');\n                const regions = Array.from(shadow.querySelectorAll('[part~=\"region\"]'));\n                const resizeMe = regions.find(r => (r.textContent || '').includes('Resize me'));\n                const cramped = regions.find(r => (r.textContent || '').includes('Cramped region'));\n                const rRect = resizeMe.getBoundingClientRect();\n                return {\n                    scrollLeft: scroll.scrollLeft,\n                    scrollWidth: scroll.scrollWidth,\n                    resizeMeStyleRight: resizeMe.style.right,\n                    resizeMeWidth: rRect.width,\n                    crampedStyleLeft: cramped ? cramped.style.left : null,\n                };\n            }\"\"\"\n        )\n\n        if save_screenshot:\n            page.screenshot(path=SCREENSHOT_PATH)\n\n        # Evaluate bug conditions:\n        # 1) scrollLeft jumped to 0 during drag or upon release when it was > 100 before drag\n        scroll_jumped_to_zero_on_release = (\n            before_drag[\"scrollLeft\"] > 100 and after_release[\"scrollLeft\"] <= 5\n        )\n        scroll_jumped_to_zero_during_drag = (\n            before_drag[\"scrollLeft\"] > 100\n            and any(sl <= 5 for sl in scroll_positions_during_drag)\n        )\n\n        # 2) 'Resize me' over-expanded far past the dragged ~80px\n        width_delta = after_release[\"resizeMeWidth\"] - before_drag[\"resizeMeWidth\"]\n        resize_me_right_pct = float(after_release[\"resizeMeStyleRight\"].replace(\"%\", \"\"))\n        cramped_left_pct = (\n            float(after_release[\"crampedStyleLeft\"].replace(\"%\", \"\"))\n            if after_release[\"crampedStyleLeft\"]\n            else 100.0\n        )\n        resize_me_end_pct = 100.0 - resize_me_right_pct\n        over_expanded = (width_delta > drag_dx * 3) or (resize_me_end_pct > cramped_left_pct)\n\n        print(\n            f\"DEBUG before_scroll={before_drag['scrollLeft']:.1f}, \"\n            f\"during_drag={scroll_positions_during_drag}, \"\n            f\"after_scroll={after_release['scrollLeft']:.1f}, \"\n            f\"width_delta={width_delta:.1f} (drag_dx={drag_dx})\",\n            file=sys.stderr,\n        )\n\n        if scroll_jumped_to_zero_on_release or scroll_jumped_to_zero_during_drag or over_expanded:\n            print(\"BUG_PRESENT\")\n        else:\n            print(\"BUG_ABSENT\")\n\n        browser.close()\n\n\nif __name__ == \"__main__\":\n    main()\n",
+   "root_cause_claimed": "In src/plugins/regions.ts (lines 273, 483-497, and 505-507), SingleRegion._onUpdate emitted the update event without indicating which edge ('start' or 'end') was being resized, causing RegionsPlugin.adjustScroll to unconditionally check both left < 0 and right > clientWidth. When zoomed in on a wide region with its left edge off-screen, dragging the right handle triggered left < 0 and snapped scrollLeft to 0, then ping-ponged between 0 and ~5800.",
+   "runs_before": "Run 1: BUG_PRESENT (before_scroll=6083.0, during_drag=[0, 5769, 0, 5787, 0, 5804, 0, 5822, 0], after_scroll=0.0, width_delta=80.0); Run 2: BUG_PRESENT (before_scroll=6083.0, during_drag=[0, 5769, 0, 5787, 0, 5804, 0, 5822, 0], after_scroll=0.0, width_delta=80.0); Run 3: BUG_PRESENT (before_scroll=6083.0, during_drag=[0, 5769, 0, 5787, 0, 5804, 0, 5822, 0], after_scroll=0.0, width_delta=80.0)",
+   "runs_after": "Run 1: BUG_ABSENT (before_scroll=6083.0, during_drag=[6083, 6083, 6083, 6083, 6083, 6083, 6083, 6083, 6083], after_scroll=6083.0, width_delta=80.0); Run 2: BUG_ABSENT (before_scroll=6083.0, during_drag=[6083, 6083, 6083, 6083, 6083, 6083, 6083, 6083, 6083], after_scroll=6083.0, width_delta=80.0); Run 3: BUG_ABSENT (before_scroll=6083.0, during_drag=[6083, 6083, 6083, 6083, 6083, 6083, 6083, 6083, 6083], after_scroll=6083.0, width_delta=80.0)",
+   "own_tests": {
+    "command": null,
+    "note": "only Cypress e2e (heavy), not run",
+    "before": "not run",
+    "after": "not run",
+    "before_output_tail": null,
+    "after_output_tail": null
+   },
+   "diff": "diff --git a/src/plugins/regions.ts b/src/plugins/regions.ts\nindex c803227..d61606d 100644\n--- a/src/plugins/regions.ts\n+++ b/src/plugins/regions.ts\n@@ -25,7 +25,7 @@ export type RegionEvents = {\n   /** Before the region is removed */\n   remove: []\n   /** When the region's parameters are being updated */\n-  update: []\n+  update: [side?: 'start' | 'end']\n   /** When dragging or resizing is finished */\n   'update-end': []\n   /** On play */\n@@ -270,7 +270,7 @@ class SingleRegion extends EventEmitter<RegionEvents> {\n       this.end = newEnd\n \n       this.renderPosition()\n-      this.emit('update')\n+      this.emit('update', side)\n     }\n   }\n \n@@ -480,18 +480,19 @@ class RegionsPlugin extends BasePlugin<RegionsPluginEvents, RegionsPluginOptions\n     div.style.marginTop = `${overlap}px`\n   }\n \n-  private adjustScroll(region: Region) {\n+  private adjustScroll(region: Region, side?: 'start' | 'end') {\n     const scrollContainer = this.wavesurfer?.getWrapper()?.parentElement\n     if (!scrollContainer) return\n     const { clientWidth, scrollWidth } = scrollContainer\n     if (scrollWidth <= clientWidth) return\n     const scrollBbox = scrollContainer.getBoundingClientRect()\n     const bbox = region.element.getBoundingClientRect()\n+    if (!side && bbox.width > clientWidth) return\n     const left = bbox.left - scrollBbox.left\n     const right = bbox.right - scrollBbox.left\n-    if (left < 0) {\n+    if (side !== 'end' && left < 0) {\n       scrollContainer.scrollLeft += left\n-    } else if (right > clientWidth) {\n+    } else if (side !== 'start' && right > clientWidth) {\n       scrollContainer.scrollLeft += right - clientWidth\n     }\n   }\n@@ -502,8 +503,8 @@ class RegionsPlugin extends BasePlugin<RegionsPluginEvents, RegionsPluginOptions\n     this.regions.push(region)\n \n     const regionSubscriptions = [\n-      region.on('update', () => {\n-        this.adjustScroll(region)\n+      region.on('update', (side) => {\n+        this.adjustScroll(region, side)\n       }),\n \n       region.on('update-end', () => {\n",
+   "diff_source": "file",
+   "timings_s": {
+    "upload": 5.6,
+    "watch": 205.8,
+    "gate": 0.2,
+    "reproduce": 435.6,
+    "fix": 302.7
+   },
+   "total_s": 951,
+   "tokens": {
+    "reproduce": 425416,
+    "fix": 399206
+   },
+   "leak_scan_hits": [],
+   "error": null,
+   "score": {
+    "setup": "ok",
+    "watcher_understood": true,
+    "reproduced": true,
+    "failure_stage": "none",
+    "fix_vs_maintainers": "different_plausible",
+    "same_file": true,
+    "same_function": true,
+    "own_tests": "not_available",
+    "leak": false,
+    "comparison": "Same file (src/plugins/regions.ts), same three places, same mechanism as PR #3496: pass the resized side through the region 'update' event (the type change and emit('update', side) lines are identical). Maintainers then skip adjustScroll() entirely while resizing; the agent keeps auto-scroll for the edge being dragged and suppresses only the opposite edge, plus an extra guard for regions wider than the viewport when dragging. Slightly larger than the maintainers' patch but arguably keeps more behaviour.",
+    "what_went_wrong": "Nothing material. The reproduction asserts on the scroll position jumping to 0 during and after the drag (one part of the reported symptom), not on the blank/smeared rendering. No project tests were run (Cypress only)."
+   }
+  },
+  {
+   "id": "drawdb687",
+   "repo": "drawdb-io/drawdb",
+   "issue_url": "https://github.com/drawdb-io/drawdb/issues/687",
+   "fix_url": "https://github.com/drawdb-io/drawdb/pull/692",
+   "pre_fix_sha": "da0f084d47cd5cb4992df6d3a23707543338e796",
+   "symptom": "Browser Back from /editor skips the homepage, sticks on /editor, or needs several presses",
+   "given": {
+    "note_title": "[BUG] Back navigation from /editor skips or freezes homepage",
+    "run": "npm install && npm run dev -- --port 5173 --strictPort",
+    "url": "http://localhost:5173/",
+    "tests": null
+   },
+   "final_verdict": "timeout",
+   "fix_status": null,
+   "watcher_report": {
+    "is_bug": true,
+    "title": "Back navigation from /editor skips the homepage after navigating back and forward",
+    "start_url": "https://www.drawdb.app",
+    "steps": [
+     {
+      "t": 0,
+      "action": "observe",
+      "target": "Google search results page for 'draw db'",
+      "value": ""
+     },
+     {
+      "t": 1.2,
+      "action": "click",
+      "target": "Search result link 'drawDB | Online database diagram editor and SQL generator'",
+      "value": "https://www.drawdb.app"
+     },
+     {
+      "t": 2,
+      "action": "observe",
+      "target": "drawDB homepage loaded in address bar",
+      "value": "https://www.drawdb.app"
+     },
+     {
+      "t": 4.1,
+      "action": "click",
+      "target": "Top navigation bar link 'Editor'",
+      "value": "https://www.drawdb.app/editor"
+     },
+     {
+      "t": 4.5,
+      "action": "observe",
+      "target": "drawDB editor loaded with diagram 'Diagrams/Untitled Diagram'",
+      "value": "https://www.drawdb.app/editor"
+     },
+     {
+      "t": 8.8,
+      "action": "click",
+      "target": "Browser Back button",
+      "value": ""
+     },
+     {
+      "t": 9.2,
+      "action": "observe",
+      "target": "Browser returns to drawDB homepage",
+      "value": "https://www.drawdb.app"
+     },
+     {
+      "t": 11.1,
+      "action": "click",
+      "target": "Browser Back button",
+      "value": ""
+     },
+     {
+      "t": 11.5,
+      "action": "observe",
+      "target": "Browser returns to Google search results page",
+      "value": ""
+     },
+     {
+      "t": 12.3,
+      "action": "click",
+      "target": "Browser Forward button",
+      "value": ""
+     },
+     {
+      "t": 12.5,
+      "action": "observe",
+      "target": "Browser navigates forward to drawDB homepage",
+      "value": "https://www.drawdb.app"
+     },
+     {
+      "t": 13.3,
+      "action": "click",
+      "target": "Browser Forward button",
+      "value": ""
+     },
+     {
+      "t": 13.5,
+      "action": "observe",
+      "target": "Browser navigates forward to drawDB editor",
+      "value": "https://www.drawdb.app/editor"
+     },
+     {
+      "t": 14.6,
+      "action": "click",
+      "target": "Browser Back button",
+      "value": ""
+     },
+     {
+      "t": 14.8,
+      "action": "observe",
+      "target": "Browser skips drawDB homepage and jumps directly to Google search results page",
+      "value": ""
+     },
+     {
+      "t": 16.5,
+      "action": "click",
+      "target": "Browser Forward button",
+      "value": ""
+     },
+     {
+      "t": 16.7,
+      "action": "observe",
+      "target": "Browser skips drawDB homepage and jumps directly to drawDB editor",
+      "value": "https://www.drawdb.app/editor"
+     },
+     {
+      "t": 18.1,
+      "action": "click",
+      "target": "Browser Back button",
+      "value": ""
+     },
+     {
+      "t": 18.3,
+      "action": "observe",
+      "target": "Browser again skips drawDB homepage and jumps directly to Google search results page",
+      "value": ""
+     }
+    ],
+    "expected": "Clicking the browser Back button from /editor should navigate back one history entry to the drawDB homepage (https://www.drawdb.app), and clicking Forward from the preceding Google search page should navigate to the drawDB homepage before /editor.",
+    "actual": "After navigating Back twice to Google search results and Forward twice back to /editor, the drawDB homepage entry is lost from browser history: clicking Back once from /editor skips the homepage and jumps directly to Google search results, and clicking Forward once from Google skips the homepage and jumps directly to /editor.",
+    "check": "After navigating from an external page to https://www.drawdb.app, clicking 'Editor' to open https://www.drawdb.app/editor, navigating back twice to the external page, navigating forward twice back to /editor, and then navigating back once, the resulting URL is the external page URL instead of the homepage ('/').",
+    "evidence": [
+     {
+      "t": 9.2,
+      "note": "First Back click from /editor correctly returns to drawdb.app homepage."
+     },
+     {
+      "t": 12.5,
+      "note": "First Forward click from Google search results returns to drawdb.app homepage."
+     },
+     {
+      "t": 13.5,
+      "note": "Second Forward click navigates from drawdb.app homepage to drawdb.app/editor."
+     },
+     {
+      "t": 14.8,
+      "note": "Single Back click from drawdb.app/editor skips drawdb.app homepage and lands directly on Google search results."
+     },
+     {
+      "t": 16.7,
+      "note": "Single Forward click from Google search results skips drawdb.app homepage and lands directly on drawdb.app/editor with Forward button disabled."
+     },
+     {
+      "t": 18.3,
+      "note": "Single Back click from drawdb.app/editor again skips drawdb.app homepage and lands directly on Google search results."
+     }
+    ]
+   },
+   "gate": {
+    "reproducible": 0.8,
+    "checkable": 0.95,
+    "severity": "minor",
+    "severity_confidence": 0.65,
+    "missing": [],
+    "ready": true
+   },
+   "repro_summary": "",
+   "repro_setup": "",
+   "repro_script": "",
+   "root_cause_claimed": null,
+   "runs_before": null,
+   "runs_after": null,
+   "own_tests": {
+    "command": null,
+    "note": "project has no tests",
+    "before": null,
+    "after": null,
+    "before_output_tail": null,
+    "after_output_tail": null
+   },
+   "diff": null,
+   "diff_source": null,
+   "timings_s": {
+    "upload": 5.9,
+    "watch": 117.7,
+    "gate": 0.3,
+    "reproduce": 729.2
+   },
+   "total_s": 860,
+   "tokens": {
+    "reproduce": 337487,
+    "fix": null
+   },
+   "leak_scan_hits": [],
+   "error": null,
+   "score": {
+    "setup": "ok",
+    "watcher_understood": "partly",
+    "reproduced": false,
+    "failure_stage": "reproduce",
+    "fix_vs_maintainers": null,
+    "own_tests": "not_available",
+    "leak": false,
+    "comparison": "No fix produced. Maintainers' fix (PR #692): only call setSearchParams when a shareId is present, and use replace:true, so opening /editor does not push an extra history entry.",
+    "what_went_wrong": "Timeout in the reproduce step (720 s limit). The recording shows the public site reached from a Google results page, with browser Back/Forward. The watcher transcribed the navigation faithfully but its expected/actual centres on 'homepage entry lost after back-forward-forward', one of the variants in the issue. In the sandbox the landing page crashed without its external services (tweet embeds, star counter), and the agent spent its time stubbing those and faking an external 'search' origin.",
+    "extended_review": "With the longer limit the agent finished in 644 s and reported not_reproduced (BUG_ABSENT 3/3): in headless Chrome, Back from /editor returned to the homepage every time. The issue itself calls the behaviour inconsistent; the script followed the watcher's back-back-forward-forward variant and never asserted on the extra history entry that the maintainers' fix removes."
+   }
+  },
+  {
+   "id": "chogan491",
+   "repo": "choganhq/chogan",
+   "issue_url": "https://github.com/choganhq/chogan/issues/491",
+   "fix_url": "https://github.com/choganhq/chogan/pull/497",
+   "pre_fix_sha": "3c7443e69d0487dea78c831e18316d3589416f4c",
+   "symptom": "Hokm: the teammate's card fills the whole screen for a split second as it is played",
+   "given": {
+    "note_title": "[Bug] Teammate card pops up for a split second in Hokm",
+    "run": "python3 -m http.server -d www 8000",
+    "url": "http://localhost:8000/games/hokm/index.html",
+    "tests": "node tools/test.js"
+   },
+   "final_verdict": "reproduced",
+   "fix_status": "fixed",
+   "watcher_report": {
+    "is_bug": true,
+    "title": "Teammate's played card back flashes at near-fullscreen size for a single frame when leading a trick in Hokm",
+    "start_url": "http://localhost:8000/games/hokm/index.html",
+    "steps": [
+     {
+      "t": 0.0,
+      "action": "navigate",
+      "target": "Hokm game page in mobile viewport during an active hand (Spades trump, player's turn '\u0646\u0648\u0628\u062a \u062a\u0648\u0633\u062a')",
+      "value": "http://localhost:8000/games/hokm/index.html"
+     },
+     {
+      "t": 0.4,
+      "action": "click",
+      "target": "7 of Spades (\u06f7\u2660) card in the player's hand to lead the trick",
+      "value": ""
+     },
+     {
+      "t": 1.2,
+      "action": "wait",
+      "target": "Right opponent (\u0631\u0627\u0633\u062a) plays 10 of Spades (\u06f1\u06f0\u2660), Teammate (\u06cc\u0627\u0631) plays Queen of Spades (\u0628\u06cc\u200c\u0628\u06cc\u2660), and Left opponent (\u0686\u067e) plays 4 of Spades (\u06f4\u2660) to finish the trick",
+      "value": ""
+     },
+     {
+      "t": 3.8,
+      "action": "observe",
+      "target": "Teammate (\u06cc\u0627\u0631) wins the trick ('\u0645\u0627' trick count increases from \u062f\u0633\u062a\u0647 \u06f3 to \u062f\u0633\u062a\u0647 \u06f4), cards clear from the table, and turn shifts to Teammate ('\u0646\u0648\u0628\u062a \u06cc\u0627\u0631...')",
+      "value": ""
+     },
+     {
+      "t": 4.43,
+      "action": "observe",
+      "target": "Teammate (\u06cc\u0627\u0631) leads the next trick with 6 of Clubs (\u06f6\u2663); for one frame the card back flashes across almost the entire screen before shrinking into the teammate's trick slot and flipping face-up",
+      "value": ""
+     },
+     {
+      "t": 5.8,
+      "action": "click",
+      "target": "7 of Clubs (\u06f7\u2663) card in the player's hand after Left opponent (\u0686\u067e) plays Queen of Clubs (\u0628\u06cc\u200c\u0628\u06cc\u2663) and the prompt instructs to follow suit ('\u0646\u0648\u0628\u062a \u062a\u0648\u0633\u062a - \u0628\u0627\u06cc\u062f \u0647\u0645\u200c\u062e\u0627\u0644 \u0628\u0627\u0632\u06cc \u06a9\u0646\u06cc')",
+      "value": ""
+     },
+     {
+      "t": 6.5,
+      "action": "wait",
+      "target": "Right opponent (\u0631\u0627\u0633\u062a) plays 6 of Hearts (\u06f6\u2665), Left opponent (\u0686\u067e) wins the trick and leads 5 of Diamonds (\u06f5\u2666) at 8.5s",
+      "value": ""
+     },
+     {
+      "t": 9.1,
+      "action": "click",
+      "target": "8 of Spades (\u06f8\u2660) card in the player's hand to trump the trick",
+      "value": ""
+     },
+     {
+      "t": 10.5,
+      "action": "observe",
+      "target": "Right opponent (\u0631\u0627\u0633\u062a) plays King of Diamonds (\u0634\u0627\u0647\u2666) and Teammate (\u06cc\u0627\u0631) plays 8 of Hearts (\u06f8\u2665) at normal card size without the oversized flash",
+      "value": ""
+     }
+    ],
+    "expected": "When the teammate ('\u06cc\u0627\u0631') leads a card onto the table, the card back should animate smoothly at normal card size inside the teammate's trick slot and flip to reveal the card face, without ever expanding over the rest of the UI.",
+    "actual": "When the teammate ('\u06cc\u0627\u0631') leads a trick onto the empty table at 4.43s, the card-back graphic suddenly renders at a massive, near-fullscreen size (spanning almost the full viewport width and covering the difficulty controls, scoreboard, trump indicator, and table behind the player's hand) for a single frame before snapping back to normal card dimensions and flipping to reveal the 6 of Clubs (\u06f6\u2663).",
+    "check": "Sampling getBoundingClientRect() on each requestAnimationFrame while a teammate ('\u06cc\u0627\u0631') card is added to and animated on the trick table, the rendered card or card-back element temporarily has width > window.innerWidth * 0.5 (more than twice the normal played card width).",
+    "evidence": [
+     {
+      "t": 1.87,
+      "note": "When teammate (\u06cc\u0627\u0631) plays Queen of Spades (\u0628\u06cc\u200c\u0628\u06cc\u2660) as the third card in Trick 1, the card back appears at normal card size and flips normally."
+     },
+     {
+      "t": 4.4,
+      "note": "Table is empty and turn indicator shows '\u06cc\u0627\u0631' / '\u0646\u0648\u0628\u062a \u06cc\u0627\u0631...' right before the teammate leads Trick 2."
+     },
+     {
+      "t": 4.43,
+      "note": "For a single frame, the ornate red/blue/gold card back flashes at near-fullscreen scale (covering the top settings pills, scoreboard, trump badge, and entire table area down to the player's hand)."
+     },
+     {
+      "t": 4.47,
+      "note": "One frame later (~33ms), the card back snaps back to normal card size in the teammate's trick slot mid-flip and reveals 6 of Clubs (\u06f6\u2663) by 4.57s."
+     },
+     {
+      "t": 10.53,
+      "note": "When teammate (\u06cc\u0627\u0631) plays 8 of Hearts (\u06f8\u2665) as the fourth card in Trick 3, the card flips at normal size without flashing oversized."
+     }
+    ]
+   },
+   "gate": {
+    "reproducible": 0.54,
+    "checkable": 0.96,
+    "severity": "cosmetic",
+    "severity_confidence": 0.76,
+    "missing": [],
+    "ready": true
+   },
+   "repro_summary": "When the teammate (data-p=\"2\") leads a trick on a 390x844 mobile viewport, the played card and its .ch-turnback element briefly render at 346.0px wide (~7.4x normalWidth of 46.8px). This happens because doPlay() passes seatOf(2) (which spans all three columns of .hk-table) to C.ui.fly(), starting the flip animation at scale(7.4).",
+   "repro_setup": "# Clone the exact commit\nmkdir -p /workspace/src_chogan491 && cd /workspace/src_chogan491 && git init -q && git remote add origin https://github.com/choganhq/chogan.git\ngit fetch -q --depth 1 origin 3c7443e69d0487dea78c831e18316d3589416f4c && git checkout -q FETCH_HEAD && git remote remove origin\n\n# Install Playwright and missing runtime library for Playwright's Node driver\npip install --break-system-packages playwright\nDEBIAN_FRONTEND=noninteractive apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y libatomic1 && ldconfig\n\n# Start the app in the background and run the reproduction script\npython3 -m http.server -d www 8000 >/tmp/http.log 2>&1 </dev/null &\nSERVER_PID=$!\nsleep 1\npython3 /workspace/repro_chogan491.py\nkill $SERVER_PID 2>/dev/null || true",
+   "repro_script": "import time\nfrom playwright.sync_api import sync_playwright\n\nURL = \"http://localhost:8000/games/hokm/index.html\"\nSCREENSHOT_PATH = \"/workspace/repro_chogan491.png\"\n\n\ndef main():\n    with sync_playwright() as p:\n        browser = p.chromium.launch(\n            executable_path=\"/usr/bin/google-chrome\",\n            headless=True,\n        )\n        context = browser.new_context(viewport={\"width\": 390, \"height\": 844})\n        page = context.new_page()\n\n        page.goto(URL, wait_until=\"networkidle\")\n        page.wait_for_timeout(400)\n\n        # Dismiss tutorial modal if shown\n        skip_btn = page.locator(\".ch-modal button\").first\n        if skip_btn.is_visible():\n            skip_btn.click()\n            page.wait_for_timeout(300)\n\n        # Install rAF sampler to measure teammate ('\u06cc\u0627\u0631', data-p=\"2\") card and card-back rects\n        page.evaluate(\"\"\"() => {\n            window.__qa = {\n                oversized: false,\n                leadOversized: false,\n                leadSeen: false,\n                playSeen: false,\n                maxWidth: 0,\n                maxLeadWidth: 0,\n                innerWidth: window.innerWidth,\n                normalWidth: 0\n            };\n            function sample() {\n                const trick = document.querySelector('.hk-trick');\n                if (trick) {\n                    const card = trick.querySelector('[data-p=\"2\"]');\n                    if (card) {\n                        window.__qa.playSeen = true;\n                        const allCards = trick.querySelectorAll('.hk-tcard');\n                        const isLead = allCards.length === 1;\n                        if (isLead) window.__qa.leadSeen = true;\n\n                        const r = card.getBoundingClientRect();\n                        let maxW = r.width;\n                        const back = card.querySelector('.ch-turnback');\n                        if (back) {\n                            const br = back.getBoundingClientRect();\n                            if (br.width > maxW) maxW = br.width;\n                        }\n                        if (maxW > window.__qa.maxWidth) window.__qa.maxWidth = maxW;\n                        if (isLead && maxW > window.__qa.maxLeadWidth) window.__qa.maxLeadWidth = maxW;\n                        if (maxW > 0 && maxW < window.innerWidth * 0.3) {\n                            window.__qa.normalWidth = maxW;\n                        }\n                        if (maxW > window.innerWidth * 0.5) {\n                            window.__qa.oversized = true;\n                            if (isLead) window.__qa.leadOversized = true;\n                        }\n                    }\n                }\n                requestAnimationFrame(sample);\n            }\n            requestAnimationFrame(sample);\n        }\"\"\")\n\n        # Play through hands until teammate leads a trick (or timeout after 45s)\n        deadline = time.time() + 45.0\n        while time.time() < deadline:\n            qa = page.evaluate(\"() => window.__qa\")\n            if qa[\"leadSeen\"] and qa[\"oversized\"]:\n                # Wait a moment so the table state is settled for screenshot, then break\n                page.wait_for_timeout(400)\n                break\n\n            # 1. Choose trump if picker is visible\n            suit_btn = page.locator(\".hk-pick:not([hidden]) .hk-suit\").first\n            if suit_btn.count() > 0 and suit_btn.is_visible():\n                suit_btn.click()\n                page.wait_for_timeout(200)\n                continue\n\n            # 2. Close handover/finish modal if visible\n            modal_btn = page.locator(\".ch-modal button.ch-btn--primary\").first\n            if modal_btn.count() > 0 and modal_btn.is_visible():\n                modal_btn.click()\n                page.wait_for_timeout(300)\n                continue\n\n            # 3. Play a legal card if it's player's turn\n            ok_card = page.locator(\".hk-hand .hk-card--ok\").first\n            if ok_card.count() > 0 and ok_card.is_visible() and ok_card.is_enabled():\n                ok_card.click()\n                page.wait_for_timeout(200)\n                continue\n\n            page.wait_for_timeout(120)\n\n        qa = page.evaluate(\"() => window.__qa\")\n        page.screenshot(path=SCREENSHOT_PATH)\n\n        print(\n            f\"QA_METRICS innerWidth={qa['innerWidth']} playSeen={qa['playSeen']} \"\n            f\"leadSeen={qa['leadSeen']} maxWidth={qa['maxWidth']:.1f} \"\n            f\"maxLeadWidth={qa['maxLeadWidth']:.1f} normalWidth={qa['normalWidth']:.1f}\"\n        )\n        if qa[\"oversized\"]:\n            print(\"BUG_PRESENT\")\n        else:\n            print(\"BUG_ABSENT\")\n\n        browser.close()\n\n\nif __name__ == \"__main__\":\n    main()\n",
+   "root_cause_claimed": "In www/lib/chogan.js line 2466, ui.fly() computed the start scale k = a.width / b.width without an upper bound, causing a ~46.8px card flying from the 346px-wide seatTop container in Hokm to render at 346px width on the initial frame. Clamping k to at most 1 prevents wider source containers from inflating a flying card beyond its normal size.",
+   "runs_before": "QA_METRICS innerWidth=390 playSeen=True leadSeen=True maxWidth=346.0 maxLeadWidth=346.0 normalWidth=46.8; BUG_PRESENT",
+   "runs_after": "RUN 1: QA_METRICS innerWidth=390 playSeen=True leadSeen=True maxWidth=46.8 maxLeadWidth=46.8 normalWidth=18.7, BUG_ABSENT; RUN 2: QA_METRICS innerWidth=390 playSeen=True leadSeen=True maxWidth=46.8 maxLeadWidth=46.8 normalWidth=46.8, BUG_ABSENT; RUN 3: QA_METRICS innerWidth=390 playSeen=True leadSeen=True maxWidth=46.8 maxLeadWidth=46.8 normalWidth=46.8, BUG_ABSENT",
+   "own_tests": {
+    "command": "node tools/test.js",
+    "note": null,
+    "before": "timed out after 4 minutes (exit 124, during Gorillas (#466)); all Hokm and core motion/speed test groups passed; 2 unrelated timing assertions failed",
+    "after": "timed out after 4 minutes (exit 124, at Gorillas (#466)); all Hokm and core motion/speed test groups passed; 1 unrelated timing assertion failed",
+    "before_output_tail": "\n\nSudoku: a finished row, column or box ripples (#407)\n\nReversi: the disc drops in, then the flips ripple out (#407)\n\nCheckers: taken pieces fade, the crown drops on (#407)\n\nPeg solitaire: the peg arcs over, the jumped peg shrinks out (#407)\n\nMorris: pieces drop in and slide, a mill flashes, a taken piece fades (#407)\n\nDots and boxes: a chain fills box by box, in place (#407)\n\nBackgammon: checkers slide, a hit goes to the bar, dice tumble (#407)\n\nLudo: a captured token flies home, reaching home bursts (#407)\n\nNonogram: a fill pops in, a line that comes right flashes (#407)\n\nBridges: a wave runs over the islands on the win (#407)\n\nMastermind: the code turns over peg by peg (#407)\n\nSliding puzzle: a shimmer sweeps the solved tray (#407)\n\nJigsaw: a placed piece glides into its slot (#407)\n\nBreakout: brick shards, paddle squash, reduced motion (#407)\n\nBlock Drop: cleared rows flash, the rows above fall in, a hard drop thuds (#407)\n\nTower defence: a kill pops and its coins float up (#407)\n\nBattleship: a miss splashes, a hit bursts, a sinking shakes (#407)\n\nPool and snooker: a potted ball sinks into the pocket (#407)\n\nBowling: strike and spare pop, no replay with reduced motion (#407)\n\nKlondike (#415)\n\nCrazy Eights (#416)\n\nHaft Khabis: the Iranian rules by default (#449)\n\nGin Rummy (#417)\n\nSudoku: clear all notes, with undo (#424)\n\nCard games: one speed setting, Slow, Normal, Fast (#425)\n\nCards: Persian corner indices in Persian (#428)\n\nSpider (#460)\n\nPairs (#461)\n\nGorillas (#466)\n",
+    "after_output_tail": "\n\nSudoku: a finished row, column or box ripples (#407)\n\nReversi: the disc drops in, then the flips ripple out (#407)\n\nCheckers: taken pieces fade, the crown drops on (#407)\n\nPeg solitaire: the peg arcs over, the jumped peg shrinks out (#407)\n\nMorris: pieces drop in and slide, a mill flashes, a taken piece fades (#407)\n\nDots and boxes: a chain fills box by box, in place (#407)\n\nBackgammon: checkers slide, a hit goes to the bar, dice tumble (#407)\n\nLudo: a captured token flies home, reaching home bursts (#407)\n\nNonogram: a fill pops in, a line that comes right flashes (#407)\n\nBridges: a wave runs over the islands on the win (#407)\n\nMastermind: the code turns over peg by peg (#407)\n\nSliding puzzle: a shimmer sweeps the solved tray (#407)\n\nJigsaw: a placed piece glides into its slot (#407)\n\nBreakout: brick shards, paddle squash, reduced motion (#407)\n\nBlock Drop: cleared rows flash, the rows above fall in, a hard drop thuds (#407)\n\nTower defence: a kill pops and its coins float up (#407)\n\nBattleship: a miss splashes, a hit bursts, a sinking shakes (#407)\n\nPool and snooker: a potted ball sinks into the pocket (#407)\n\nBowling: strike and spare pop, no replay with reduced motion (#407)\n\nKlondike (#415)\n\nCrazy Eights (#416)\n\nHaft Khabis: the Iranian rules by default (#449)\n\nGin Rummy (#417)\n\nSudoku: clear all notes, with undo (#424)\n\nCard games: one speed setting, Slow, Normal, Fast (#425)\n\nCards: Persian corner indices in Persian (#428)\n\nSpider (#460)\n\nPairs (#461)\n\nGorillas (#466)\n"
+   },
+   "diff": "diff --git a/www/lib/chogan.js b/www/lib/chogan.js\nindex 1944634..f60623c 100644\n--- a/www/lib/chogan.js\n+++ b/www/lib/chogan.js\n@@ -2463,7 +2463,7 @@\n     if (!b.width || !b.height) return null;\n     var dx = (a.left + a.width / 2) - (b.left + b.width / 2);\n     var dy = (a.top + a.height / 2) - (b.top + b.height / 2);\n-    var k = a.width ? a.width / b.width : 1;\n+    var k = a.width ? Math.min(1, a.width / b.width) : 1;\n     // a card game's flights follow its pace (#425); 1 anywhere else, and in the tests'\n     // sandboxes, which run this helper without the rest of the core. Its own name:\n     // reusing `k` turned the start scale into the pace, so a card began 1.5x big.\n",
+   "diff_source": "file",
+   "timings_s": {
+    "upload": 5.7,
+    "watch": 83.1,
+    "gate": 0.3,
+    "reproduce": 209.1,
+    "fix": 850.4
+   },
+   "total_s": 1150,
+   "tokens": {
+    "reproduce": 451364,
+    "fix": 539085
+   },
+   "leak_scan_hits": [],
+   "error": null,
+   "score": {
+    "setup": "ok",
+    "watcher_understood": true,
+    "reproduced": true,
+    "failure_stage": "none",
+    "fix_vs_maintainers": "equivalent",
+    "same_file": true,
+    "same_function": true,
+    "own_tests": "inconclusive",
+    "leak": false,
+    "comparison": "Same line in ui.fly() in www/lib/chogan.js as PR #497: clamp the start scale k. Maintainers clamp to [0.25, 1.25]; the agent clamps to at most 1 with no lower bound. The maintainers' new regression check (start scale between 1 and 1.25 for a wide seat) would pass with the agent's value of 1.0.",
+    "what_went_wrong": "Nothing in reproduce or fix; the agent chose a phone-sized viewport on its own and caught a one-frame glitch. Own tests timed out at the 4-minute cap before and after. Case used 1150 s of the 1200 s budget."
+   }
+  },
+  {
+   "id": "datepicker5573",
+   "repo": "Hacker0x01/react-datepicker",
+   "issue_url": "https://github.com/Hacker0x01/react-datepicker/issues/5573",
+   "fix_url": "https://github.com/Hacker0x01/react-datepicker/pull/5584",
+   "pre_fix_sha": "cc308619c47f6b1b2c69bdfeae4881ef3b3aede2",
+   "symptom": "Year picker with no value shows every year styled as selected",
+   "given": {
+    "note_title": "All options are selected for year picker",
+    "run": "yarn install && yarn build && yarn start   (docs site; Yarn 4)",
+    "url": "http://localhost:5173/",
+    "tests": "yarn test"
+   },
+   "final_verdict": "reproduced",
+   "fix_status": "timeout",
+   "watcher_report": {
+    "is_bug": true,
+    "title": "All year options appear selected in Year Picker when input is cleared",
+    "start_url": "http://localhost:5173/",
+    "steps": [
+     {
+      "t": 0.0,
+      "action": "navigate",
+      "target": "Year Picker page",
+      "value": "http://localhost:5173/"
+     },
+     {
+      "t": 0.8,
+      "action": "click",
+      "target": "Year Picker text input displaying 2025",
+      "value": ""
+     },
+     {
+      "t": 1.8,
+      "action": "type",
+      "target": "Year Picker text input (delete 2025 using Backspace until empty)",
+      "value": ""
+     },
+     {
+      "t": 2.5,
+      "action": "observe",
+      "target": "Year Picker popup (2017 - 2028)",
+      "value": ""
+     },
+     {
+      "t": 3.1,
+      "action": "click",
+      "target": "empty area above the Year Picker text input to close the popup",
+      "value": ""
+     },
+     {
+      "t": 4.5,
+      "action": "click",
+      "target": "empty Year Picker text input to reopen the popup",
+      "value": ""
+     },
+     {
+      "t": 5.0,
+      "action": "observe",
+      "target": "Year Picker popup (2017 - 2028)",
+      "value": ""
+     }
+    ],
+    "expected": "When the Year Picker input value is cleared (empty), none of the year options in the 2017 - 2028 popup should be highlighted as selected.",
+    "actual": "As soon as the Year Picker input is cleared, all 12 visible year options (2017 through 2028) in the popup become highlighted in blue as selected, and all 12 remain highlighted as selected after closing and reopening the popup.",
+    "check": "When the Year Picker input value is empty and the year picker popup is open, all 12 year options (2017 through 2028) inside the popup have the selected state/highlighted blue background instead of 0 selected options.",
+    "evidence": [
+     {
+      "t": 1.5,
+      "note": "With 2025 in the input, the 2017 - 2028 popup highlights only 2025 in blue."
+     },
+     {
+      "t": 2.5,
+      "note": "Immediately after 2025 is deleted from the input, all 12 year options (2017 through 2028) are highlighted in blue as selected."
+     },
+     {
+      "t": 5.0,
+      "note": "After closing the popup and clicking the empty input to reopen it, all 12 year options (2017 through 2028) are still highlighted in blue as selected."
+     }
+    ]
+   },
+   "gate": {
+    "reproducible": 0.96,
+    "checkable": 0.96,
+    "severity": "cosmetic",
+    "severity_confidence": 0.43,
+    "missing": [],
+    "ready": true
+   },
+   "repro_summary": "Clearing the Year Picker input with Backspace caused all 12 year options (2017 through 2028) to receive the .react-datepicker__year-text--selected class. Closing and reopening the popup left all 12 year options selected with blue background rgb(33, 107, 165).",
+   "repro_setup": "corepack enable; NODE_USE_ENV_PROXY=1 yarn install; NODE_USE_ENV_PROXY=1 yarn build; NODE_USE_ENV_PROXY=1 yarn --cwd docs-site install; NODE_USE_ENV_PROXY=1 yarn start; pip install --break-system-packages playwright; apt-get install -y libatomic1",
+   "repro_script": "import sys\nfrom playwright.sync_api import sync_playwright\n\nURL = \"http://localhost:5173/\"\nSCREENSHOT_PATH = \"/workspace/repro_datepicker5573.png\"\n\n\ndef main():\n    save_screenshot = \"--screenshot\" in sys.argv\n\n    with sync_playwright() as p:\n        browser = p.chromium.launch(\n            executable_path=\"/usr/bin/google-chrome\",\n            headless=True,\n        )\n        page = browser.new_page(viewport={\"width\": 1280, \"height\": 900})\n\n        # Step 1: Navigate to http://localhost:5173/\n        page.goto(URL, wait_until=\"networkidle\", timeout=60000)\n\n        section = page.locator(\"#example-year-picker\")\n        section.wait_for(state=\"visible\", timeout=30000)\n        section.scroll_into_view_if_needed()\n\n        year_input = section.locator(\".example__preview input\").first\n        year_input.wait_for(state=\"visible\", timeout=15000)\n\n        initial_val = year_input.input_value()\n\n        # Step 2: Click Year Picker text input\n        year_input.click()\n\n        popup = section.locator(\".react-datepicker__year-wrapper\")\n        popup.wait_for(state=\"visible\", timeout=10000)\n\n        # Step 3: Delete input value using Backspace until empty\n        for _ in range(len(initial_val) + 2):\n            if year_input.input_value() == \"\":\n                break\n            page.keyboard.press(\"Backspace\")\n            page.wait_for_timeout(50)\n\n        assert year_input.input_value() == \"\", f\"Expected empty input, got {year_input.input_value()!r}\"\n\n        # Step 4: Observe Year Picker popup immediately after clearing\n        after_clear = page.evaluate(\"\"\"() => {\n            const section = document.querySelector('#example-year-picker');\n            const items = Array.from(section.querySelectorAll('.react-datepicker__year-text'));\n            const selected = items.filter(el => el.classList.contains('react-datepicker__year-text--selected'));\n            return {\n                total: items.length,\n                selectedCount: selected.length,\n                years: items.map(el => el.textContent.trim()),\n                selectedYears: selected.map(el => el.textContent.trim()),\n            };\n        }\"\"\")\n\n        # Step 5: Click empty area above the Year Picker text input to close the popup\n        heading = section.locator(\"h2.example__heading\")\n        heading.click()\n        popup.wait_for(state=\"hidden\", timeout=10000)\n\n        # Step 6: Click the empty Year Picker text input to reopen the popup\n        year_input.click()\n        popup.wait_for(state=\"visible\", timeout=10000)\n\n        # Step 7: Observe Year Picker popup after reopening\n        after_reopen = page.evaluate(\"\"\"() => {\n            const section = document.querySelector('#example-year-picker');\n            const items = Array.from(section.querySelectorAll('.react-datepicker__year-text'));\n            const selected = items.filter(el => el.classList.contains('react-datepicker__year-text--selected'));\n            const bgColors = selected.map(el => getComputedStyle(el).backgroundColor);\n            return {\n                total: items.length,\n                selectedCount: selected.length,\n                years: items.map(el => el.textContent.trim()),\n                selectedYears: selected.map(el => el.textContent.trim()),\n                bgColors: Array.from(new Set(bgColors)),\n            };\n        }\"\"\")\n\n        if save_screenshot:\n            section.scroll_into_view_if_needed()\n            page.screenshot(path=SCREENSHOT_PATH)\n\n        browser.close()\n\n        print(f\"initial_val={initial_val!r}\")\n        print(f\"after_clear={after_clear}\")\n        print(f\"after_reopen={after_reopen}\")\n\n        bug_after_clear = (\n            after_clear[\"total\"] > 0\n            and after_clear[\"selectedCount\"] == after_clear[\"total\"]\n        )\n        bug_after_reopen = (\n            after_reopen[\"total\"] > 0\n            and after_reopen[\"selectedCount\"] == after_reopen[\"total\"]\n        )\n\n        if bug_after_clear and bug_after_reopen:\n            print(\"BUG_PRESENT\")\n        else:\n            print(\"BUG_ABSENT\")\n\n\nif __name__ == \"__main__\":\n    main()\n",
+   "root_cause_claimed": "",
+   "runs_before": "",
+   "runs_after": "",
+   "own_tests": {
+    "command": "yarn test",
+    "note": null,
+    "before": "",
+    "after": "",
+    "before_output_tail": "   \n  test_utils.ts                   |      99 |    95.83 |     100 |   98.88 | 58                                                                                          \n src/test/helper_components       |     100 |    80.95 |     100 |     100 |                                                                                             \n  calendar_icon.tsx               |     100 |      100 |     100 |     100 |                                                                                             \n  custom_input.tsx                |     100 |       80 |     100 |     100 | 22                                                                                          \n  custom_time_input.tsx           |     100 |    83.33 |     100 |     100 | 20                                                                                          \n  shadow_root.tsx                 |     100 |       80 |     100 |     100 | 22                                                                                          \n  test_wrapper.tsx                |     100 |      100 |     100 |     100 |                                                                                             \n----------------------------------|---------|----------|---------|---------|---------------------------------------------------------------------------------------------\n\nTest Suites: 28 passed, 28 total\nTests:       1022 passed, 1022 total\nSnapshots:   0 total\nTime:        135.075 s\nRan all test suites.\n",
+    "after_output_tail": ".ts                   |      99 |    95.83 |     100 |   98.88 | 58                                                                                          \n src/test/helper_components       |     100 |    80.95 |     100 |     100 |                                                                                             \n  calendar_icon.tsx               |     100 |      100 |     100 |     100 |                                                                                             \n  custom_input.tsx                |     100 |       80 |     100 |     100 | 22                                                                                          \n  custom_time_input.tsx           |     100 |    83.33 |     100 |     100 | 20                                                                                          \n  shadow_root.tsx                 |     100 |       80 |     100 |     100 | 22                                                                                          \n  test_wrapper.tsx                |     100 |      100 |     100 |     100 |                                                                                             \n----------------------------------|---------|----------|---------|---------|---------------------------------------------------------------------------------------------\n\nTest Suites: 28 passed, 28 total\nTests:       1022 passed, 1022 total\nSnapshots:   0 total\nTime:        91.663 s, estimated 128 s\nRan all test suites.\n"
+   },
+   "diff": "diff --git a/src/year.tsx b/src/year.tsx\nindex 8bbfad1..9c280cc 100644\n--- a/src/year.tsx\n+++ b/src/year.tsx\n@@ -248,7 +248,7 @@ export default class Year extends Component<YearProps> {\n     if (selectsMultiple) {\n       return selectedDates?.some((date) => year === getYear(date));\n     }\n-    return !selected || year === getYear(selected);\n+    return Boolean(selected && year === getYear(selected));\n   };\n \n   onYearClick = (\n",
+   "diff_source": "file",
+   "timings_s": {
+    "upload": 3.2,
+    "watch": 56.6,
+    "gate": 0.3,
+    "reproduce": 510.8,
+    "fix": 653.4
+   },
+   "total_s": 1225,
+   "tokens": {
+    "reproduce": 352375,
+    "fix": 236276
+   },
+   "leak_scan_hits": [],
+   "error": null,
+   "score": {
+    "setup": "ok",
+    "watcher_understood": true,
+    "reproduced": true,
+    "failure_stage": "fix",
+    "fix_vs_maintainers": "equivalent_but_timed_out",
+    "same_file": true,
+    "same_function": true,
+    "own_tests": "passing_but_timed_out",
+    "leak": false,
+    "comparison": "The diff left in the sandbox is equivalent to PR #5584: isSelectedYear() in src/year.tsx returns Boolean(selected && year === getYear(selected)) instead of !selected || ... (maintainers wrote !!selected && ...).",
+    "what_went_wrong": "Counted as a timeout: the fix agent was cancelled at the 20-minute case limit before giving its final answer. By then it had patched the file, got BUG_ABSENT 3/3, run the project's jest suite before and after (1022/1022 passed both times, about 2 minutes each) and saved the diff; it was tidying an unrelated package.json reformat that the build had produced. Yarn 4 install plus build plus docs-site install took most of the reproduce step. An earlier attempt at this case is void: the operator config gave no concrete port, the watcher left start_url empty and the gate stopped it as needs_info (a harness mistake, fixed by giving http://localhost:5173/)."
+   }
+  },
+  {
+   "id": "recharts6618",
+   "repo": "recharts/recharts",
+   "issue_url": "https://github.com/recharts/recharts/issues/6618",
+   "fix_url": "https://github.com/recharts/recharts/pull/6623",
+   "pre_fix_sha": "bed4a00ab21da5fe658eb648433c30eb45b13a15",
+   "symptom": "Docs examples page: after pressing Run in the code editor, sidebar navigation stops updating the page",
+   "given": {
+    "note_title": "[Bug] page navigation is broken after first chart load",
+    "run": "npm install && npm run build && cd www && npm install && npm start   (docs site in www/)",
+    "url": "http://localhost:5173/",
+    "tests": null
+   },
+   "final_verdict": "reproduced",
+   "fix_status": "fixed",
+   "watcher_report": {
+    "is_bug": true,
+    "title": "Chart preview and code editor fail to update on sidebar navigation after editing and running an example",
+    "start_url": "https://recharts.github.io/en-US/examples/SimpleAreaChart/",
+    "steps": [
+     {
+      "t": 0,
+      "action": "navigate",
+      "target": "browser address bar",
+      "value": "https://recharts.github.io/en-US/examples/SimpleAreaChart/"
+     },
+     {
+      "t": 0.5,
+      "action": "click",
+      "target": "browser reload button",
+      "value": ""
+     },
+     {
+      "t": 2,
+      "action": "wait",
+      "target": "Simple Area Chart example finishes loading",
+      "value": ""
+     },
+     {
+      "t": 3.5,
+      "action": "click",
+      "target": "Edit button above the code editor",
+      "value": ""
+     },
+     {
+      "t": 11.5,
+      "action": "click",
+      "target": "top margin value 20 in the code editor",
+      "value": ""
+     },
+     {
+      "t": 14.5,
+      "action": "type",
+      "target": "code editor margin top value (replacing 20 with 10)",
+      "value": "10"
+     },
+     {
+      "t": 16.5,
+      "action": "click",
+      "target": "Run button above the code editor",
+      "value": ""
+     },
+     {
+      "t": 22.5,
+      "action": "scroll",
+      "target": "left Examples sidebar",
+      "value": ""
+     },
+     {
+      "t": 23.5,
+      "action": "click",
+      "target": "Tiny Bar Chart link under BarChart in the left sidebar",
+      "value": ""
+     },
+     {
+      "t": 24.5,
+      "action": "observe",
+      "target": "URL, page heading, chart preview, and code editor",
+      "value": ""
+     },
+     {
+      "t": 26,
+      "action": "scroll",
+      "target": "left Examples sidebar",
+      "value": ""
+     },
+     {
+      "t": 31.5,
+      "action": "click",
+      "target": "Two Level Pie Chart link under PieChart in the left sidebar",
+      "value": ""
+     },
+     {
+      "t": 32.5,
+      "action": "observe",
+      "target": "URL, page heading, chart preview, and code editor",
+      "value": ""
+     },
+     {
+      "t": 35.5,
+      "action": "scroll",
+      "target": "left Examples sidebar",
+      "value": ""
+     },
+     {
+      "t": 38.5,
+      "action": "click",
+      "target": "Simple Radar Chart link under RadarChart in the left sidebar",
+      "value": ""
+     },
+     {
+      "t": 39.5,
+      "action": "observe",
+      "target": "URL, page heading, chart preview, and code editor",
+      "value": ""
+     },
+     {
+      "t": 41.5,
+      "action": "click",
+      "target": "Pie Responsive Container link under ResponsiveContainer in the left sidebar",
+      "value": ""
+     },
+     {
+      "t": 42.5,
+      "action": "observe",
+      "target": "URL, page heading, chart preview, and code editor",
+      "value": ""
+     }
+    ],
+    "expected": "After navigating to another example in the left sidebar (Tiny Bar Chart, Two Level Pie Chart, Simple Radar Chart, or Pie Responsive Container), the URL, page heading, rendered chart preview, and code editor should all update to display the newly selected chart example.",
+    "actual": "After clicking Edit, changing margin top from 20 to 10, and clicking Run on Simple Area Chart, navigating to any other example via the left sidebar updates the URL and page heading, but both the rendered chart preview and the code editor remain stuck on the edited SimpleAreaChart example (still displaying the purple area chart for Page A through Page G and the SimpleAreaChart code with top: 10 and the Run button).",
+    "check": "After clicking Edit, modifying the code, clicking Run on Simple Area Chart, and then clicking Tiny Bar Chart in the sidebar, window.location.pathname includes '/examples/TinyBarChart/' and the page heading text is 'Tiny Bar Chart', while the code editor content still contains 'SimpleAreaChart' instead of 'TinyBarChart'",
+    "evidence": [
+     {
+      "t": 1.5,
+      "note": "Page reloads at https://recharts.github.io/en-US/examples/SimpleAreaChart/ showing Simple Area Chart and the Edit button above the code pane."
+     },
+     {
+      "t": 3.5,
+      "note": "User clicks Edit, switching the button to Run and enabling code editing."
+     },
+     {
+      "t": 15,
+      "note": "Code editor shows margin top modified from 'top: 20,' to 'top: 10,' in SimpleAreaChart."
+     },
+     {
+      "t": 16.5,
+      "note": "User clicks the Run button above the code editor."
+     },
+     {
+      "t": 24,
+      "note": "After clicking Tiny Bar Chart, the URL changes to https://recharts.github.io/en-US/examples/TinyBarChart/ and the heading changes to Tiny Bar Chart, but the chart still renders the purple Simple Area Chart (Page A to Page G) and the code editor still displays SimpleAreaChart with top: 10."
+     },
+     {
+      "t": 32,
+      "note": "After clicking Two Level Pie Chart, the URL changes to https://recharts.github.io/en-US/examples/TwoLevelPieChart/ and heading to Two Level Pie Chart, but the chart and code editor still show SimpleAreaChart."
+     },
+     {
+      "t": 39,
+      "note": "After clicking Simple Radar Chart, the URL changes to https://recharts.github.io/en-US/examples/SimpleRadarChart/ and heading to Simple Radar Chart, but the chart and code editor still show SimpleAreaChart."
+     },
+     {
+      "t": 42,
+      "note": "After clicking Pie Responsive Container, the URL changes to https://recharts.github.io/en-US/examples/PieResponsiveContainer/ and heading to Pie Responsive Container, but the chart and code editor still show SimpleAreaChart."
+     }
+    ]
+   },
+   "gate": {
+    "reproducible": 0.97,
+    "checkable": 0.96,
+    "severity": "major",
+    "severity_confidence": 0.66,
+    "missing": [],
+    "ready": true
+   },
+   "repro_summary": "After editing SimpleAreaChart and clicking Run, clicking other examples in the sidebar updates the URL and page heading, but both the chart preview and code editor remain stuck on the edited SimpleAreaChart.",
+   "repro_setup": "mkdir -p /workspace/src_recharts6618 && cd /workspace/src_recharts6618 && git init -q && git remote add origin https://github.com/recharts/recharts.git && git fetch -q --depth 1 origin bed4a00ab21da5fe658eb648433c30eb45b13a15 && git checkout -q FETCH_HEAD && git remote remove origin\ncd /workspace/src_recharts6618 && npm install && npm run build\ncd /workspace/src_recharts6618/www && npm install\npip install --break-system-packages playwright\napt-get update -qq && apt-get install -y libatomic1\ncd /workspace/src_recharts6618/www && npm start -- --port 5173 --open=false",
+   "repro_script": "import time\nfrom playwright.sync_api import sync_playwright\n\nBASE_URL = \"http://localhost:5173\"\nSTART_URL = f\"{BASE_URL}/en-US/examples/SimpleAreaChart/\"\nSCREENSHOT_PATH = \"/workspace/repro_recharts6618.png\"\n\n\ndef main():\n    with sync_playwright() as p:\n        browser = p.chromium.launch(\n            executable_path=\"/usr/bin/google-chrome\",\n            headless=True,\n        )\n        context = browser.new_context(viewport={\"width\": 1280, \"height\": 900})\n        page = context.new_page()\n\n        # Step 1 & 2: Navigate to SimpleAreaChart and reload\n        page.goto(START_URL, wait_until=\"networkidle\")\n        page.reload(wait_until=\"networkidle\")\n\n        # Step 3: Wait for Simple Area Chart example to finish loading\n        page.locator(\"h3.page-title\", has_text=\"Simple Area Chart\").wait_for(state=\"visible\", timeout=15000)\n        edit_btn = page.locator(\"button.codemirror-toolbar-item\", has_text=\"Edit\")\n        edit_btn.wait_for(state=\"visible\", timeout=15000)\n\n        # Step 4: Click Edit button above the code editor\n        edit_btn.click()\n        run_btn = page.locator(\"button.codemirror-toolbar-item\", has_text=\"Run\")\n        run_btn.wait_for(state=\"visible\", timeout=15000)\n        # Wait until CodeMirror becomes editable\n        page.locator('.cm-content[contenteditable=\"true\"]').wait_for(state=\"visible\", timeout=15000)\n\n        # Step 5 & 6: Click top margin value 20 in the code editor and replace with 10\n        top_line = page.locator(\".cm-line\", has_text=\"top: 20\").first\n        top_line.scroll_into_view_if_needed()\n        # Double-click the number token \"20\" inside that line\n        num_token = top_line.locator(\"span\", has_text=\"20\").last\n        num_token.dblclick()\n        page.keyboard.type(\"10\")\n        page.wait_for_timeout(300)\n\n        # Step 7: Click Run button above the code editor\n        run_btn.click()\n        page.wait_for_timeout(1000)\n\n        # Step 8 & 9: Scroll left Examples sidebar and click Tiny Bar Chart\n        tiny_bar_link = page.locator('a[href*=\"/examples/TinyBarChart\"]').first\n        tiny_bar_link.scroll_into_view_if_needed()\n        tiny_bar_link.click()\n        page.wait_for_timeout(1000)\n\n        # Step 10: Evaluate the bug report's check\n        check_result = page.evaluate(\"\"\"() => {\n            const pathname = window.location.pathname;\n            const heading = document.querySelector('h3.page-title')?.textContent?.trim() || '';\n            const editorText = document.querySelector('.cm-content')?.textContent || '';\n            const hasAreaChart = !!document.querySelector('.recharts-area');\n            const hasBarChart = !!document.querySelector('.recharts-bar');\n            const toolbarBtnText = Array.from(document.querySelectorAll('button.codemirror-toolbar-item'))\n                .map(b => b.textContent.trim());\n            return {\n                pathname,\n                heading,\n                editorContainsSimpleAreaChart: editorText.includes('SimpleAreaChart'),\n                editorContainsTinyBarChart: editorText.includes('TinyBarChart'),\n                editorContainsTop10: editorText.includes('top: 10'),\n                hasAreaChart,\n                hasBarChart,\n                toolbarBtnText,\n            };\n        }\"\"\")\n\n        # Follow remaining sidebar navigation steps from the report\n        for href_part, expected_heading in [\n            (\"/examples/TwoLevelPieChart\", \"Two Level Pie Chart\"),\n            (\"/examples/SimpleRadarChart\", \"Simple Radar Chart\"),\n            (\"/examples/PieResponsiveContainer\", \"Pie Responsive Container\"),\n        ]:\n            link = page.locator(f'a[href*=\"{href_part}\"]').first\n            link.scroll_into_view_if_needed()\n            link.click()\n            page.wait_for_timeout(600)\n\n        final_state = page.evaluate(\"\"\"() => {\n            return {\n                pathname: window.location.pathname,\n                heading: document.querySelector('h3.page-title')?.textContent?.trim() || '',\n                editorContainsSimpleAreaChart: (document.querySelector('.cm-content')?.textContent || '').includes('SimpleAreaChart'),\n            };\n        }\"\"\")\n\n        page.screenshot(path=SCREENSHOT_PATH, full_page=False)\n        browser.close()\n\n        print(\"TinyBarChart check:\", check_result)\n        print(\"Final navigation state:\", final_state)\n\n        bug_present = (\n            \"/examples/TinyBarChart/\" in check_result[\"pathname\"]\n            and check_result[\"heading\"] == \"Tiny Bar Chart\"\n            and check_result[\"editorContainsSimpleAreaChart\"]\n            and not check_result[\"editorContainsTinyBarChart\"]\n        )\n        print(\"BUG_PRESENT\" if bug_present else \"BUG_ABSENT\")\n\n\nif __name__ == \"__main__\":\n    main()\n",
+   "root_cause_claimed": "In www/src/views/ExamplesView.tsx (lines 53-58), <CodeEditorWithPreview> was rendered without a key tied to the current example route parameter (page), causing React to reuse the component instance and persist local state (isEditMode, editedCode, codeToRun) from www/src/components/CodeEditorWithPreview.tsx (lines 65-67) across navigations.",
+   "runs_before": "3/3 runs printed: TinyBarChart check: {'pathname': '/en-US/examples/TinyBarChart/', 'heading': 'Tiny Bar Chart', 'editorContainsSimpleAreaChart': True, 'editorContainsTinyBarChart': False, 'editorContainsTop10': True, 'hasAreaChart': True, 'hasBarChart': True, 'toolbarBtnText': ['Copy', 'Run', 'Open in StackBlitz']} | Final navigation state: {'pathname': '/en-US/examples/PieResponsiveContainer/', 'heading': 'Pie Responsive Container', 'editorContainsSimpleAreaChart': True} | BUG_PRESENT",
+   "runs_after": "3/3 runs printed: TinyBarChart check: {'pathname': '/en-US/examples/TinyBarChart/', 'heading': 'Tiny Bar Chart', 'editorContainsSimpleAreaChart': False, 'editorContainsTinyBarChart': True, 'editorContainsTop10': False, 'hasAreaChart': True, 'hasBarChart': True, 'toolbarBtnText': ['Copy', 'Edit', 'Open in StackBlitz']} | Final navigation state: {'pathname': '/en-US/examples/PieResponsiveContainer/', 'heading': 'Pie Responsive Container', 'editorContainsSimpleAreaChart': False} | BUG_ABSENT",
+   "own_tests": {
+    "command": null,
+    "note": "the docs site (www) has no tests",
+    "before": "not run",
+    "after": "not run",
+    "before_output_tail": null,
+    "after_output_tail": null
+   },
+   "diff": "diff --git a/www/src/views/ExamplesView.tsx b/www/src/views/ExamplesView.tsx\nindex 5054e5c..c0c5f0a 100644\n--- a/www/src/views/ExamplesView.tsx\n+++ b/www/src/views/ExamplesView.tsx\n@@ -51,6 +51,7 @@ function ExamplesViewImpl({ params }: ExamplesViewImplProps) {\n           <div className=\"example-wrapper\">\n             <div className=\"example-inner-wrapper\">\n               <CodeEditorWithPreview\n+                key={page}\n                 Component={exampleResult.ExampleComponent}\n                 sourceCode={exampleResult.sourceCode}\n                 stackBlitzTitle={`Recharts example: ${exampleResult.cateName} - ${exampleResult.exampleName}`}\n",
+   "diff_source": "file",
+   "timings_s": {
+    "upload": 9.8,
+    "watch": 80.0,
+    "gate": 0.2,
+    "reproduce": 712.9,
+    "fix": 185.0
+   },
+   "total_s": 989,
+   "tokens": {
+    "reproduce": 369800,
+    "fix": 184744
+   },
+   "leak_scan_hits": [],
+   "error": null,
+   "score": {
+    "setup": "ok",
+    "watcher_understood": true,
+    "reproduced": true,
+    "failure_stage": "none",
+    "fix_vs_maintainers": "equivalent",
+    "same_file": true,
+    "same_function": true,
+    "own_tests": "not_available",
+    "leak": false,
+    "comparison": "Identical to PR #6623: add key={page} to <CodeEditorWithPreview> in www/src/views/ExamplesView.tsx.",
+    "what_went_wrong": "Nothing, but slow: the reproduce step took 713 s of its 720 s limit (two npm installs and a library build), so this passed by seconds."
+   }
+  },
+  {
+   "id": "sonner512",
+   "repo": "emilkowalski/sonner",
+   "issue_url": "https://github.com/emilkowalski/sonner/issues/512",
+   "fix_url": "https://github.com/emilkowalski/sonner/pull/513",
+   "pre_fix_sha": "1487e04f7ef443c35745b7fefcd42b7f3b0d1de5",
+   "symptom": "Toasts at top-left/center/right dismiss by swiping the wrong direction",
+   "given": {
+    "note_title": "Bug: top positions have opposite swipe to dismiss directions",
+    "run": "pnpm install && pnpm build && pnpm dev:test   (Next.js test app)",
+    "url": "http://localhost:3000/",
+    "tests": null
+   },
+   "final_verdict": "reproduced",
+   "fix_status": "fixed",
+   "watcher_report": {
+    "is_bug": true,
+    "title": "Toasts in top positions dismiss on downward swipe instead of upward swipe",
+    "start_url": "https://sonner.emilkowal.ski",
+    "steps": [
+     {
+      "t": 0.8,
+      "action": "click",
+      "target": "top-left button in the Position section",
+      "value": ""
+     },
+     {
+      "t": 1.8,
+      "action": "drag",
+      "target": "toast ('Event has been created') at top-left",
+      "value": "upward"
+     },
+     {
+      "t": 2.6,
+      "action": "drag",
+      "target": "toast ('Event has been created') at top-left",
+      "value": "upward"
+     },
+     {
+      "t": 3.0,
+      "action": "observe",
+      "target": "toast at top-left",
+      "value": "toast does not move or dismiss on upward swipe"
+     },
+     {
+      "t": 3.4,
+      "action": "drag",
+      "target": "toast ('Event has been created') at top-left",
+      "value": "downward"
+     },
+     {
+      "t": 3.8,
+      "action": "observe",
+      "target": "toast at top-left",
+      "value": "toast slides downward and is dismissed"
+     },
+     {
+      "t": 4.6,
+      "action": "click",
+      "target": "top-center button in the Position section",
+      "value": ""
+     },
+     {
+      "t": 5.6,
+      "action": "drag",
+      "target": "toast ('Event has been created') at top-center",
+      "value": "upward"
+     },
+     {
+      "t": 6.2,
+      "action": "observe",
+      "target": "toast at top-center",
+      "value": "toast does not move or dismiss on upward swipe"
+     },
+     {
+      "t": 6.6,
+      "action": "drag",
+      "target": "toast ('Event has been created') at top-center",
+      "value": "downward"
+     },
+     {
+      "t": 7.0,
+      "action": "observe",
+      "target": "toast at top-center",
+      "value": "toast slides downward and is dismissed"
+     },
+     {
+      "t": 8.2,
+      "action": "click",
+      "target": "top-right button in the Position section",
+      "value": ""
+     },
+     {
+      "t": 9.2,
+      "action": "drag",
+      "target": "toast ('Event has been created') at top-right",
+      "value": "upward"
+     },
+     {
+      "t": 10.0,
+      "action": "drag",
+      "target": "toast ('Event has been created') at top-right",
+      "value": "upward"
+     },
+     {
+      "t": 10.4,
+      "action": "observe",
+      "target": "toast at top-right",
+      "value": "toast does not move or dismiss on upward swipe"
+     },
+     {
+      "t": 10.8,
+      "action": "drag",
+      "target": "toast ('Event has been created') at top-right",
+      "value": "downward"
+     },
+     {
+      "t": 11.2,
+      "action": "observe",
+      "target": "toast at top-right",
+      "value": "toast slides downward and is dismissed"
+     },
+     {
+      "t": 12.2,
+      "action": "click",
+      "target": "bottom-left button in the Position section",
+      "value": ""
+     },
+     {
+      "t": 13.4,
+      "action": "drag",
+      "target": "toast ('Event has been created') at bottom-left",
+      "value": "downward"
+     },
+     {
+      "t": 14.8,
+      "action": "click",
+      "target": "bottom-center button in the Position section",
+      "value": ""
+     },
+     {
+      "t": 16.0,
+      "action": "drag",
+      "target": "toast ('Event has been created') at bottom-center",
+      "value": "downward"
+     },
+     {
+      "t": 17.4,
+      "action": "click",
+      "target": "bottom-right button in the Position section",
+      "value": ""
+     },
+     {
+      "t": 18.8,
+      "action": "drag",
+      "target": "toast ('Event has been created') at bottom-right",
+      "value": "downward"
+     }
+    ],
+    "expected": "As stated in the Position section ('Swipe direction changes depending on the position.'), toasts positioned at the top (top-left, top-center, top-right) should swipe upward toward the top edge to dismiss, opposite to bottom positions (bottom-left, bottom-center, bottom-right) which swipe downward.",
+    "actual": "Toasts in all three top positions (top-left, top-center, top-right) ignore upward swipes and instead move and dismiss only when swiped downward, using the same downward swipe direction as bottom positions.",
+    "check": "After clicking 'top-left', 'top-center', or 'top-right' under Position, performing an upward pointer drag on the toast leaves the toast visible in the DOM without moving it, whereas performing a downward pointer drag moves the toast downward and removes it from the DOM.",
+    "evidence": [
+     {
+      "t": 2.2,
+      "note": "Dragging the top-left toast upward to the top of the viewport does not move or dismiss it."
+     },
+     {
+      "t": 3.6,
+      "note": "Dragging the top-left toast downward moves it down and dismisses it by 3.8s."
+     },
+     {
+      "t": 6.0,
+      "note": "Dragging the top-center toast upward does not move or dismiss it."
+     },
+     {
+      "t": 6.8,
+      "note": "Dragging the top-center toast downward moves it down and dismisses it by 7.0s."
+     },
+     {
+      "t": 9.4,
+      "note": "Dragging the top-right toast upward does not move or dismiss it."
+     },
+     {
+      "t": 11.0,
+      "note": "Dragging the top-right toast downward moves it down and dismisses it by 11.2s."
+     },
+     {
+      "t": 13.6,
+      "note": "For comparison, bottom-left, bottom-center (16.2s), and bottom-right (19.0s) toasts also dismiss on a downward drag."
+     }
+    ]
+   },
+   "gate": {
+    "reproducible": 0.98,
+    "checkable": 0.94,
+    "severity": "minor",
+    "severity_confidence": 0.54,
+    "missing": [],
+    "ready": true
+   },
+   "repro_summary": "Across all three top positions (top-left, top-center, top-right), an upward pointer drag (dy = -80) did not move the toast and left it visible in the DOM, while a downward pointer drag (dy = 80) moved and dismissed it. All 3 runs printed BUG_PRESENT, matching src/index.tsx clamping --swipe-amount with Math.max(0, yPosition).",
+   "repro_setup": "mkdir -p /workspace/src_sonner512 && cd /workspace/src_sonner512 && git init -q && git remote add origin https://github.com/emilkowalski/sonner.git && git fetch -q --depth 1 origin 1487e04f7ef443c35745b7fefcd42b7f3b0d1de5 && git checkout -q FETCH_HEAD && git remote remove origin\nnpm install -g pnpm\npip install --break-system-packages playwright\ncd /tmp && apt-get update -qq && apt-get download libatomic1 && for deb in libatomic1*.deb; do dpkg -x \"$deb\" /; done && rm -f libatomic1*.deb && ldconfig\ncd /workspace/src_sonner512\npnpm install\npnpm build\npnpm dev:test >/tmp/dev_test.log 2>&1 </dev/null &",
+   "repro_script": "import sys\nimport time\nfrom playwright.sync_api import sync_playwright\n\nBASE_URL = \"http://localhost:3000\"\nSCREENSHOT_PATH = \"/workspace/repro_sonner512.png\"\n\nTOP_POSITIONS = [\"top-left\", \"top-center\", \"top-right\"]\nBOTTOM_POSITIONS = [\"bottom-left\", \"bottom-center\", \"bottom-right\"]\n\n\ndef drag_toast(page, box, dy: int, steps: int = 10):\n    cx = box[\"x\"] + box[\"width\"] / 2\n    cy = box[\"y\"] + box[\"height\"] / 2\n    page.mouse.move(cx, cy)\n    page.mouse.down()\n    page.mouse.move(cx, cy + dy, steps=steps)\n    # Check intermediate transform/swipe-amount while pointer is still down\n    mid_swipe = page.evaluate(\n        \"\"\"() => {\n            const el = document.querySelector('[data-sonner-toast]');\n            if (!el) return null;\n            return {\n                swipeAmount: el.style.getPropertyValue('--swipe-amount'),\n                rectY: el.getBoundingClientRect().y\n            };\n        }\"\"\"\n    )\n    page.mouse.up()\n    return mid_swipe\n\n\ndef main():\n    save_screenshot = \"--screenshot\" in sys.argv\n    bug_detected = False\n    details = []\n\n    with sync_playwright() as p:\n        browser = p.chromium.launch(\n            executable_path=\"/usr/bin/google-chrome\",\n            headless=True,\n        )\n        context = browser.new_context(viewport={\"width\": 1280, \"height\": 800})\n        page = context.new_page()\n\n        try:\n            for pos in TOP_POSITIONS:\n                page.goto(f\"{BASE_URL}/?position={pos}\", wait_until=\"networkidle\")\n                page.locator('[data-testid=\"default-button\"]').click()\n                toast = page.locator(\"[data-sonner-toast]\")\n                toast.wait_for(state=\"visible\", timeout=5000)\n                # Wait for mount animation to settle\n                page.wait_for_timeout(300)\n\n                initial_box = toast.bounding_box()\n                assert initial_box is not None, f\"Toast bounding box missing for {pos}\"\n\n                # Step: upward drag\n                up_mid = drag_toast(page, initial_box, dy=-80)\n                page.wait_for_timeout(350)\n\n                up_still_visible = toast.count() > 0 and toast.is_visible()\n                after_up_box = toast.bounding_box() if up_still_visible else None\n                moved_on_up = (\n                    up_mid is not None\n                    and abs(up_mid[\"rectY\"] - initial_box[\"y\"]) > 5\n                )\n\n                if save_screenshot and pos == \"top-left\":\n                    page.screenshot(path=SCREENSHOT_PATH)\n\n                # Step: downward drag\n                down_still_dismissed = False\n                moved_on_down = False\n                if up_still_visible and after_up_box is not None:\n                    down_mid = drag_toast(page, after_up_box, dy=80)\n                    moved_on_down = (\n                        down_mid is not None\n                        and (down_mid[\"rectY\"] - after_up_box[\"y\"]) > 5\n                    )\n                    # Wait past TIME_BEFORE_UNMOUNT (200ms)\n                    page.wait_for_timeout(400)\n                    down_still_dismissed = toast.count() == 0\n\n                details.append(\n                    f\"{pos}: up_still_visible={up_still_visible}, moved_on_up={moved_on_up}, \"\n                    f\"moved_on_down={moved_on_down}, down_dismissed={down_still_dismissed}\"\n                )\n\n                # Bug condition: top toast ignored upward swipe (stayed visible & didn't move)\n                # AND dismissed on downward swipe instead.\n                if up_still_visible and not moved_on_up and down_still_dismissed:\n                    bug_detected = True\n\n            for pos in BOTTOM_POSITIONS:\n                page.goto(f\"{BASE_URL}/?position={pos}\", wait_until=\"networkidle\")\n                page.locator('[data-testid=\"default-button\"]').click()\n                toast = page.locator(\"[data-sonner-toast]\")\n                toast.wait_for(state=\"visible\", timeout=5000)\n                page.wait_for_timeout(300)\n\n                initial_box = toast.bounding_box()\n                assert initial_box is not None, f\"Toast bounding box missing for {pos}\"\n\n                down_mid = drag_toast(page, initial_box, dy=80)\n                page.wait_for_timeout(400)\n                down_dismissed = toast.count() == 0\n                details.append(f\"{pos}: down_dismissed={down_dismissed}\")\n\n        finally:\n            browser.close()\n\n    for line in details:\n        print(line)\n\n    if bug_detected:\n        print(\"BUG_PRESENT\")\n    else:\n        print(\"BUG_ABSENT\")\n\n\nif __name__ == \"__main__\":\n    main()\n",
+   "root_cause_claimed": "In src/index.tsx inside Toast's onPointerMove handler (lines 323-331), --swipe-amount was unconditionally clamped with Math.max(0, yPosition) and setIsSwiped(true) only checked swipeAmount > 0, ignoring the vertical toast position y (line 109). As a result, toasts in top positions (y === 'top') ignored upward drags (yPosition < 0) and instead moved and dismissed on downward drags (yPosition > 0).",
+   "runs_before": "3 runs, all BUG_PRESENT: top-left: up_still_visible=True, moved_on_up=False, moved_on_down=True, down_dismissed=True; top-center: up_still_visible=True, moved_on_up=False, moved_on_down=True, down_dismissed=True; top-right: up_still_visible=True, moved_on_up=False, moved_on_down=True, down_dismissed=True; bottom-left: down_dismissed=True; bottom-center: down_dismissed=True; bottom-right: down_dismissed=True; BUG_PRESENT",
+   "runs_after": "3 runs, all BUG_ABSENT: top-left: up_still_visible=False, moved_on_up=True, moved_on_down=False, down_dismissed=False; top-center: up_still_visible=False, moved_on_up=True, moved_on_down=False, down_dismissed=False; top-right: up_still_visible=False, moved_on_up=True, moved_on_down=False, down_dismissed=False; bottom-left: down_dismissed=True; bottom-center: down_dismissed=True; bottom-right: down_dismissed=True; BUG_ABSENT",
+   "own_tests": {
+    "command": null,
+    "note": "only Playwright e2e against the test app, not run",
+    "before": "not run",
+    "after": "not run",
+    "before_output_tail": null,
+    "after_output_tail": null
+   },
+   "diff": "diff --git a/src/index.tsx b/src/index.tsx\nindex fca6d4f..3af8a64 100644\n--- a/src/index.tsx\n+++ b/src/index.tsx\n@@ -320,15 +320,16 @@ const Toast = (props: ToastProps) => {\n \n         const yPosition = event.clientY - pointerStartRef.current.y;\n         const isHighlighted = window.getSelection()?.toString().length > 0;\n-        const swipeAmount = Number(toastRef.current?.style.getPropertyValue('--swipe-amount').replace('px', '') || 0);\n \n-        if (swipeAmount > 0) {\n+        if (isHighlighted) return;\n+\n+        const swipeAmount = y === 'top' ? Math.min(0, yPosition) : Math.max(0, yPosition);\n+\n+        if (Math.abs(swipeAmount) > 0) {\n           setIsSwiped(true);\n         }\n \n-        if (isHighlighted) return;\n-\n-        toastRef.current?.style.setProperty('--swipe-amount', `${Math.max(0, yPosition)}px`);\n+        toastRef.current?.style.setProperty('--swipe-amount', `${swipeAmount}px`);\n       }}\n     >\n       {closeButton && !toast.jsx ? (\n",
+   "diff_source": "file",
+   "timings_s": {
+    "upload": 5.6,
+    "watch": 65.8,
+    "gate": 0.2,
+    "reproduce": 600.0,
+    "fix": 325.7
+   },
+   "total_s": 998,
+   "tokens": {
+    "reproduce": 260761,
+    "fix": 227608
+   },
+   "leak_scan_hits": [],
+   "error": null,
+   "score": {
+    "setup": "ok",
+    "watcher_understood": true,
+    "reproduced": true,
+    "failure_stage": "none",
+    "fix_vs_maintainers": "equivalent",
+    "same_file": true,
+    "same_function": true,
+    "own_tests": "not_available",
+    "leak": false,
+    "comparison": "Same handler (Toast onPointerMove in src/index.tsx) and the same two expressions as PR #513, character for character: swipeAmount = y === 'top' ? Math.min(0, yPosition) : Math.max(0, yPosition) and Math.abs(swipeAmount) > 0. The agent also moved the isHighlighted early return above setIsSwiped, which the maintainers did not.",
+    "what_went_wrong": "Nothing in the run. Caveat: the patch matches the upstream line exactly. The trace shows no network lookup (the agent read src/styles.css and edited), and the expression is the obvious one, but sonner is a very popular library, so the model may simply know the later source from training."
+   }
+  }
+ ],
+ "extended_pass_not_counted": [
+  {
+   "id": "drawdb858",
+   "final_verdict": "timeout",
+   "fix_status": null,
+   "reproduce_s": 1089,
+   "fix_s": null,
+   "total_s": 1089,
+   "limits": {
+    "reproduce_s": 1080,
+    "case_s": 1800
+   },
+   "repro_summary": "",
+   "root_cause_claimed": null,
+   "own_tests": {
+    "before": null,
+    "after": null
+   },
+   "diff": null,
+   "leak_scan_hits": [],
+   "review": "Still a timeout with an 18-minute reproduce limit (1086 s, 675k tokens). Same obstacle: getting past the 'Pick a database' modal and putting tables on the canvas. One command also failed on a sandbox snapshot-upload error."
+  },
+  {
+   "id": "panels650",
+   "final_verdict": "reproduced",
+   "fix_status": "fixed",
+   "reproduce_s": 751,
+   "fix_s": 551,
+   "total_s": 1302,
+   "limits": {
+    "reproduce_s": 1080,
+    "case_s": 1800
+   },
+   "repro_summary": "Dragging the separator 60px to the right from the panel's 100.4px minSize caused the left panel width to jump directly to 200.4px (40.0px ahead of the pointer) instead of ~160px. All 3 runs produced identical measurements and printed BUG_PRESENT.",
+   "root_cause_claimed": "In lib/global/utils/adjustLayoutByDelta.ts (lines 148\u2013182), the collapsible-panel halfway-threshold pre-adjustment ran unconditionally without checking whether the panel was starting in a collapsed state, causing an already-open collapsible panel to snap and jump ahead of the cursor.",
+   "own_tests": {
+    "before": "29 passed (29 test files), 382 passed (382 tests), 0 failed",
+    "after": "29 passed (29 test files), 382 passed (382 tests), 0 failed"
+   },
+   "diff": "diff --git a/lib/global/utils/adjustLayoutByDelta.ts b/lib/global/utils/adjustLayoutByDelta.ts\nindex 8f9a801..9f9ffe9 100644\n--- a/lib/global/utils/adjustLayoutByDelta.ts\n+++ b/lib/global/utils/adjustLayoutByDelta.ts\n@@ -146,37 +146,45 @@ export function adjustLayoutByDelta({\n \n         const { collapsible, collapsedSize, minSize } = panelConstraints;\n         if (collapsible) {\n-          // DEBUG.push(`  -> collapsible ${isSecondPanel ? \"2nd\" : \"1st\"} panel`);\n-          if (delta > 0) {\n-            const gapSize = minSize - collapsedSize;\n-            const halfwayPoint = gapSize / 2;\n-            // DEBUG.push(`  -> halfway point: ${halfwayPoint}`);\n-            // DEBUG.push(`     between collapsed: ${collapsedSize}`);\n-            // DEBUG.push(`       and min: ${minSize}`);\n-\n-            if (compareLayoutNumbers(delta, gapSize) < 0) {\n-              // DEBUG.push(\"  -> adjusting delta\");\n-              // DEBUG.push(`       from: ${delta}`);\n-              delta =\n-                compareLayoutNumbers(delta, halfwayPoint) <= 0 ? 0 : gapSize;\n-              // DEBUG.push(`       to: ${delta}`);\n-            }\n-          } else {\n-            const gapSize = minSize - collapsedSize;\n-            const halfwayPoint = 100 - gapSize / 2;\n-            // DEBUG.push(`  -> halfway point: ${halfwayPoint}`);\n-            // DEBUG.push(`     between collapsed: ${100 - collapsedSize}`);\n-            // DEBUG.push(`       and min: ${100 - minSize}`);\n-\n-            //if (isSecondPanel) {\n-            if (compareLayoutNumbers(Math.abs(delta), gapSize) < 0) {\n-              // DEBUG.push(\"  -> adjusting delta\");\n-              // DEBUG.push(`       from: ${delta}`);\n-              delta =\n-                compareLayoutNumbers(100 + delta, halfwayPoint) > 0\n-                  ? 0\n-                  : -gapSize;\n-              // DEBUG.push(`       to: ${delta}`);\n+          const initialSize = initialLayout[index];\n+          assert(\n+            initialSize != null,\n+            `Initial layout not found for panel index ${index}`\n+          );\n+\n+          if (layoutNumbersEqual(initialSize, collapsedSize)) {\n+            // DEBUG.push(`  -> collapsible ${isSecondPanel ? \"2nd\" : \"1st\"} panel`);\n+            if (delta > 0) {\n+              const gapSize = minSize - collapsedSize;\n+              const halfwayPoint = gapSize / 2;\n+              // DEBUG.push(`  -> halfway point: ${halfwayPoint}`);\n+              // DEBUG.push(`     between collapsed: ${collapsedSize}`);\n+              // DEBUG.push(`       and min: ${minSize}`);\n+\n+              if (compareLayoutNumbers(delta, gapSize) < 0) {\n+                // DEBUG.push(\"  -> adjusting delta\");\n+                // DEBUG.push(`       from: ${delta}`);\n+                delta =\n+                  compareLayoutNumbers(delta, halfwayPoint) <= 0 ? 0 : gapSize;\n+                // DEBUG.push(`       to: ${delta}`);\n+              }\n+            } else {\n+              const gapSize = minSize - collapsedSize;\n+              const halfwayPoint = 100 - gapSize / 2;\n+              // DEBUG.push(`  -> halfway point: ${halfwayPoint}`);\n+              // DEBUG.push(`     between collapsed: ${100 - collapsedSize}`);\n+              // DEBUG.push(`       and min: ${100 - minSize}`);\n+\n+              //if (isSecondPanel) {\n+              if (compareLayoutNumbers(Math.abs(delta), gapSize) < 0) {\n+                // DEBUG.push(\"  -> adjusting delta\");\n+                // DEBUG.push(`       from: ${delta}`);\n+                delta =\n+                  compareLayoutNumbers(100 + delta, halfwayPoint) > 0\n+                    ? 0\n+                    : -gapSize;\n+                // DEBUG.push(`       to: ${delta}`);\n+              }\n             }\n           }\n         }\n",
+   "leak_scan_hits": [],
+   "review": "With the longer limit it reproduced in 751 s (31 s past the first-pass limit) and then fixed in 551 s. Fix is in the same file and function as PR #651 (adjustLayoutByDelta.ts, the collapsible branch added in #635) but a different approach: the maintainers commented the whole branch out and skipped 5 of their own tests; the agent kept the branch and only runs it when the panel starts collapsed. The project's own suite passed before and after (29 files, 382 tests), including the 5 tests the maintainers had to skip. Plausible and arguably less destructive, but the reproduction checks only the first of the two examples in the recording (the jump from minSize), not the collapsedSize example, so the second symptom is unverified."
+  },
+  {
+   "id": "drawdb687",
+   "final_verdict": "not_reproduced",
+   "fix_status": null,
+   "reproduce_s": 660,
+   "fix_s": null,
+   "total_s": 660,
+   "limits": {
+    "reproduce_s": 1080,
+    "case_s": 1800
+   },
+   "repro_summary": "Across 3 runs, navigating from an external page to http://localhost:5173/, clicking the Editor link to /editor, going Back twice, Forward twice, and Back once from /editor consistently returned to http://localhost:5173/ rather than skipping to the external page (all runs printed BUG_ABSENT).",
+   "root_cause_claimed": null,
+   "own_tests": {
+    "before": null,
+    "after": null
+   },
+   "diff": null,
+   "leak_scan_hits": [],
+   "review": "With the longer limit the agent finished in 644 s and reported not_reproduced (BUG_ABSENT 3/3): in headless Chrome, Back from /editor returned to the homepage every time. The issue itself calls the behaviour inconsistent; the script followed the watcher's back-back-forward-forward variant and never asserted on the extra history entry that the maintainers' fix removes."
+  }
+ ]
+}

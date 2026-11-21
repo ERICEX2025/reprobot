@@ -66,6 +66,37 @@ and that bug was reproduced partly by luck. The run also exposed two bugs in our
 sandbox, and file downloads returning corrupt bytes for 3 diffs); both are fixed. The case list and verifier
 are kept out of this repository because the fix agent clones it.
 
+### Real GitHub issues
+
+The test that matters most: 12 already-fixed bugs from 7 open-source projects, each with a screen recording the
+reporter attached. Input: that video and the issue title. The agent gets the code from just before the fix, with
+no access to the issue, the pull request or later history, and its fix is compared with what the maintainers merged.
+
+| | Result |
+|---|---|
+| Report matches the real bug | 10 of 12 fully, 2 partly |
+| Reproduced on the old code | 7 of 12 |
+| Fixed, by its own test | 6 of 12 |
+| Fix equivalent to or as good as the maintainers' | 5 (4 equivalent, 1 different but sound), plus 1 correct but incomplete |
+| Wrong or cosmetic fixes presented as proven | 0 |
+| Time per case | 7 to 20 minutes |
+
+So about half, against 10 of 10 on bugs we planted ourselves. Where it fails:
+
+- **Reproduction is the weak link (5 of 12).** Getting a real app into the state the video starts in ate the time
+  limit three times. One bug needs a native right-click menu that headless browser automation does not produce, so
+  the test passed on code that has the bug: a confident "not reproduced" that was wrong.
+- **One report dropped a condition** that was in the issue title, so the agent tested the wrong setup.
+- **One fix was right for the reported page and missed the same line in a sibling page.** The test cannot see that.
+- **The projects' own test suites did not finish** inside our time limits in the counted runs, so "own tests still
+  pass" is unproven here.
+- The logs show no lookups of the upstream fix. One patch matches upstream character for character on a popular
+  library, which may be the model's memory.
+
+What we changed after seeing failures: sandboxes are no longer shared between cases, downloads from the sandbox are
+validated and retried, the watch step has a time limit with a fallback, and "not reproduced" is worded as "could not
+make it happen", never as "no bug".
+
 Reproduce the evaluation: `python eval/record.py && python eval/run.py` (results in `data/eval.json`).
 
 ## Run it
